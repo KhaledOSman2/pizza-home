@@ -5,6 +5,7 @@ import PopularDishes from "@/components/PopularDishes";
 import OffersSection from "@/components/OffersSection";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import pizzaEastern from "@/assets/pizza-eastern.jpg";
 import pizzaWestern from "@/assets/pizza-western.jpg";
@@ -45,14 +46,16 @@ const Index = () => {
       {/* Order Now Button */}
       <section className="py-8 bg-background">
         <div className="container mx-auto px-4 text-center">
-          <Button 
-            size="lg" 
-            variant="hero" 
-            className="text-xl px-12 py-6 rounded-full shadow-lg hover:shadow-xl"
-          >
-            <ShoppingCart className="h-6 w-6 ml-2" />
-            اطلب الآن
-          </Button>
+          <Link to="/categories">
+            <Button 
+              size="lg" 
+              variant="hero" 
+              className="text-xl px-12 py-6 rounded-full shadow-lg hover:shadow-xl"
+            >
+              <ShoppingCart className="h-6 w-6 ml-2" />
+              اطلب الآن
+            </Button>
+          </Link>
         </div>
       </section>
 
@@ -65,20 +68,22 @@ const Index = () => {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {categories.map((category) => (
-              <CategoryCard
-                key={category.id}
-                title={category.title}
-                image={category.image}
-                onClick={() => console.log(`Navigate to ${category.title}`)}
-              />
+              <Link key={category.id} to={`/category/${category.id}`}>
+                <CategoryCard
+                  title={category.title}
+                  image={category.image}
+                />
+              </Link>
             ))}
           </div>
 
           <div className="text-center">
-            <Button variant="outline" size="lg" className="gap-2 text-lg px-8 py-3">
-              عرض جميع الأقسام
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+            <Link to="/categories">
+              <Button variant="outline" size="lg" className="gap-2 text-lg px-8 py-3">
+                عرض جميع الأقسام
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -89,14 +94,16 @@ const Index = () => {
       {/* Second Order Button */}
       <section className="py-8 bg-background">
         <div className="container mx-auto px-4 text-center">
-          <Button 
-            size="lg" 
-            variant="order" 
-            className="text-xl px-12 py-6 rounded-full shadow-lg hover:shadow-xl"
-          >
-            <ShoppingCart className="h-6 w-6 ml-2" />
-            اطلب الآن
-          </Button>
+          <Link to="/categories">
+            <Button 
+              size="lg" 
+              variant="order" 
+              className="text-xl px-12 py-6 rounded-full shadow-lg hover:shadow-xl"
+            >
+              <ShoppingCart className="h-6 w-6 ml-2" />
+              اطلب الآن
+            </Button>
+          </Link>
         </div>
       </section>
 
