@@ -52,6 +52,13 @@ export default {
 					DEFAULT: 'hsl(var(--card))',
 					foreground: 'hsl(var(--card-foreground))'
 				},
+				pizza: {
+					red: 'hsl(var(--pizza-red))',
+					orange: 'hsl(var(--pizza-orange))',
+					gold: 'hsl(var(--pizza-gold))',
+					cream: 'hsl(var(--pizza-cream))',
+					brown: 'hsl(var(--pizza-brown))'
+				},
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
 					foreground: 'hsl(var(--sidebar-foreground))',

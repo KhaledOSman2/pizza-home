@@ -18,6 +18,9 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        hero: "bg-gradient-to-r from-pizza-red to-pizza-orange text-white hover:shadow-lg hover:scale-[1.02] transition-all duration-300",
+        order: "bg-pizza-red text-white hover:bg-pizza-red/90 shadow-md hover:shadow-lg transition-all duration-300",
+        category: "bg-card border border-border hover:bg-pizza-cream hover:border-pizza-gold transition-all duration-300",
       },
       size: {
         default: "h-10 px-4 py-2",
