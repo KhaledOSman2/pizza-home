@@ -3,85 +3,68 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, Plus, Star } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-
-interface DishType {
-  id: number;
-  name: string;
-  price: number;
-  image: string;
-  description: string;
-  rating: number;
-  category: string;
-}
-
-const dishes: DishType[] = [
-  {
-    id: 1,
-    name: "بيتزا زعتر وجبنة",
-    price: 25,
-    image: "/placeholder.svg?height=250&width=250",
-    description: "بيتزا شرقية لذيذة مع الزعتر الطازج والجبنة البيضاء",
-    rating: 4.8,
-    category: "eastern-pizza"
-  },
-  {
-    id: 2,
-    name: "بيتزا شاورما",
-    price: 35,
-    image: "/placeholder.svg?height=250&width=250",
-    description: "بيتزا مميزة محشوة بالشاورما والخضار",
-    rating: 4.9,
-    category: "eastern-pizza"
-  },
-  {
-    id: 3,
-    name: "بيتزا مارغريتا",
-    price: 30,
-    image: "/placeholder.svg?height=250&width=250",
-    description: "البيتزا الكلاسيكية مع الطماطم والجبنة والريحان",
-    rating: 4.7,
-    category: "western-pizza"
-  },
-  {
-    id: 4,
-    name: "بيتزا بيبروني",
-    price: 40,
-    image: "/placeholder.svg?height=250&width=250",
-    description: "بيتزا غربية مع شرائح البيبروني الحارة",
-    rating: 4.6,
-    category: "western-pizza"
-  },
-  {
-    id: 5,
-    name: "فطيرة سبانخ",
-    price: 12,
-    image: "/placeholder.svg?height=250&width=250",
-    description: "فطيرة تقليدية محشوة بالسبانخ الطازج",
-    rating: 4.5,
-    category: "fatayer"
-  },
-  {
-    id: 6,
-    name: "فطيرة لحمة",
-    price: 15,
-    image: "/placeholder.svg?height=250&width=250",
-    description: "فطيرة شهية محشوة باللحمة المفرومة والتوابل",
-    rating: 4.8,
-    category: "fatayer"
-  }
-];
-
-const categoryNames: Record<string, string> = {
-  "eastern-pizza": "بيتزا شرقي",
-  "western-pizza": "بيتزا غربي",
-  "fatayer": "الفطائر",
-  "salads": "السلطات"
-};
+import { useState, useEffect } from "react";
+import { apiService, Dish, Category } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
+import { useCart } from "@/contexts/CartContext";
 
 const CategoryPage = () => {
   const { id } = useParams<{ id: string }>();
-  const categoryName = id ? categoryNames[id] || "قسم غير معروف" : "قسم غير معروف";
-  const categoryDishes = dishes.filter(dish => dish.category === id);
+  const [dishes, setDishes] = useState<Dish[]>([]);
+  const [category, setCategory] = useState<Category | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  const { addToCart } = useCart();
+
+  useEffect(() => {
+    if (id) {
+      fetchCategoryData();
+    }
+  }, [id]);
+
+  const fetchCategoryData = async () => {
+    try {
+      setLoading(true);
+      // Fetch dishes for this category using the slug
+      const dishesResponse = await apiService.getDishes(id);
+      const dishesData = dishesResponse as any; // The API returns the data directly
+      setDishes(dishesData.dishes || []);
+      
+      // If we have dishes, get the category info from the first dish
+      if (dishesData.dishes && dishesData.dishes.length > 0) {
+        setCategory(dishesData.dishes[0].category);
+      } else {
+        // Try to fetch category directly if no dishes found
+        try {
+          const categoryResponse = await apiService.getCategory(id);
+          const categoryData = categoryResponse as any;
+          setCategory(categoryData.category);
+        } catch (catError) {
+          console.log('Category not found:', catError);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching category data:', error);
+      toast({
+        variant: "destructive",
+        title: "خطأ",
+        description: "حدث خطأ في تحميل بيانات القسم. يرجى المحاولة مرة أخرى.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddToCart = (dish: Dish) => {
+    addToCart({
+      _id: dish._id,
+      name: dish.name,
+      price: dish.price,
+      image: dish.image,
+    });
+  };
+
+  const categoryName = category?.name || "قسم غير معروف";
 
   return (
     <div className="min-h-screen bg-background">
@@ -114,15 +97,19 @@ const CategoryPage = () => {
       {/* Dishes Grid */}
       <section className="py-12">
         <div className="container mx-auto px-4">
-          {categoryDishes.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="text-lg text-muted-foreground">جاري تحميل الأطباق...</div>
+            </div>
+          ) : dishes.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {categoryDishes.map((dish) => (
-                <Card key={dish.id} className="hover:shadow-lg transition-all duration-300 group">
+              {dishes.map((dish) => (
+                <Card key={dish._id} className="hover:shadow-lg transition-all duration-300 group">
                   <CardContent className="p-0">
-                    <Link to={`/dish/${dish.id}`}>
+                    <Link to={`/dish/${dish._id}`}>
                       <div className="relative overflow-hidden rounded-t-lg">
                         <img 
-                          src={dish.image} 
+                          src={dish.image?.url || "/placeholder.svg?height=250&width=250"} 
                           alt={dish.name}
                           className="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300"
                         />
@@ -137,16 +124,20 @@ const CategoryPage = () => {
                     </Link>
                     
                     <div className="p-4">
-                      <Link to={`/dish/${dish.id}`}>
+                      <Link to={`/dish/${dish._id}`}>
                         <h3 className="text-lg font-semibold text-foreground mb-2 group-hover:text-pizza-red transition-colors">
                           {dish.name}
                         </h3>
                       </Link>
                       <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
-                        {dish.description}
+                        {dish.description || "طبق لذيذ ومميز"}
                       </p>
                       
-                      <Button className="w-full gap-2" variant="order">
+                      <Button 
+                        className="w-full gap-2" 
+                        variant="order"
+                        onClick={() => handleAddToCart(dish)}
+                      >
                         <Plus className="h-4 w-4" />
                         أضف للسلة
                       </Button>

@@ -4,12 +4,53 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, User, Mail, Phone, Lock, Eye, EyeOff } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+const signupSchema = z.object({
+  name: z.string().min(2, "الاسم يجب أن يكون أكثر من حرفين"),
+  email: z.string().min(1, "البريد الإلكتروني مطلوب").email("البريد الإلكتروني غير صحيح"),
+  phone: z.string().optional(),
+  password: z.string().min(6, "كلمة المرور يجب أن تكون 6 أحرف على الأقل"),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "كلمات المرور غير متطابقة",
+  path: ["confirmPassword"],
+});
+
+type SignUpFormData = z.infer<typeof signupSchema>;
 
 const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { signup, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignUpFormData>({
+    resolver: zodResolver(signupSchema),
+  });
+
+  const onSubmit = async (data: SignUpFormData) => {
+    try {
+      await signup({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+        phone: data.phone,
+      });
+      navigate('/dashboard');
+    } catch (error) {
+      // Error is handled in the AuthContext
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -44,22 +85,26 @@ const SignUp = () => {
               </CardHeader>
               
               <CardContent className="space-y-6">
-                <form className="space-y-4">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                   {/* Full Name */}
                   <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-foreground font-medium">
+                    <Label htmlFor="name" className="text-foreground font-medium">
                       الاسم الكامل
                     </Label>
                     <div className="relative">
                       <Input
-                        id="fullName"
+                        id="name"
                         type="text"
                         placeholder="أدخل اسمك الكامل"
                         className="pl-10"
                         dir="rtl"
+                        {...register("name")}
                       />
                       <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     </div>
+                    {errors.name && (
+                      <p className="text-sm text-destructive">{errors.name.message}</p>
+                    )}
                   </div>
 
                   {/* Email */}
@@ -74,15 +119,19 @@ const SignUp = () => {
                         placeholder="example@email.com"
                         className="pl-10"
                         dir="ltr"
+                        {...register("email")}
                       />
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     </div>
+                    {errors.email && (
+                      <p className="text-sm text-destructive">{errors.email.message}</p>
+                    )}
                   </div>
 
                   {/* Phone */}
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="text-foreground font-medium">
-                      رقم الهاتف
+                      رقم الهاتف (اختياري)
                     </Label>
                     <div className="relative">
                       <Input
@@ -91,9 +140,13 @@ const SignUp = () => {
                         placeholder="01xxxxxxxxx"
                         className="pl-10"
                         dir="ltr"
+                        {...register("phone")}
                       />
                       <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     </div>
+                    {errors.phone && (
+                      <p className="text-sm text-destructive">{errors.phone.message}</p>
+                    )}
                   </div>
 
                   {/* Password */}
@@ -108,6 +161,7 @@ const SignUp = () => {
                         placeholder="أدخل كلمة مرور قوية"
                         className="pl-10 pr-10"
                         dir="ltr"
+                        {...register("password")}
                       />
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <button
@@ -122,6 +176,9 @@ const SignUp = () => {
                         )}
                       </button>
                     </div>
+                    {errors.password && (
+                      <p className="text-sm text-destructive">{errors.password.message}</p>
+                    )}
                   </div>
 
                   {/* Confirm Password */}
@@ -136,6 +193,7 @@ const SignUp = () => {
                         placeholder="أعد إدخال كلمة المرور"
                         className="pl-10 pr-10"
                         dir="ltr"
+                        {...register("confirmPassword")}
                       />
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <button
@@ -150,6 +208,9 @@ const SignUp = () => {
                         )}
                       </button>
                     </div>
+                    {errors.confirmPassword && (
+                      <p className="text-sm text-destructive">{errors.confirmPassword.message}</p>
+                    )}
                   </div>
 
                   {/* Submit Button */}
@@ -158,8 +219,9 @@ const SignUp = () => {
                     size="lg" 
                     variant="hero" 
                     className="w-full text-lg py-6"
+                    disabled={isLoading}
                   >
-                    إنشاء الحساب
+                    {isLoading ? "جاري إنشاء الحساب..." : "إنشاء الحساب"}
                   </Button>
                 </form>
 

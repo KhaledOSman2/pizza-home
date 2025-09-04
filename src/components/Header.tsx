@@ -1,8 +1,17 @@
-import { User, ShoppingCart, LogIn } from "lucide-react";
+import { User, ShoppingCart, LogIn, LogOut, Settings } from "lucide-react";
 import { Button } from "./ui/button";
 import { Link } from "react-router-dom";
+import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
+  const { getTotalItems } = useCart();
+  const { user, isAuthenticated, logout } = useAuth();
+  const totalItems = getTotalItems();
+  
+  const handleLogout = async () => {
+    await logout();
+  };
   return (
     <header className="bg-background border-b border-border shadow-sm">
       <div className="container mx-auto px-4 py-3">
@@ -17,12 +26,39 @@ const Header = () => {
 
           {/* Navigation Actions */}
           <div className="flex items-center gap-3">
-            <Link to="/login">
-              <Button variant="ghost" size="sm" className="gap-2">
-                <User className="h-4 w-4" />
-                <span className="hidden sm:inline">تسجيل الدخول</span>
-              </Button>
-            </Link>
+            {isAuthenticated ? (
+              <>
+                {/* User Dropdown/Links */}
+                <Link to="/dashboard">
+                  <Button variant="ghost" size="sm" className="gap-2">
+                    <User className="h-4 w-4" />
+                    <span className="hidden sm:inline">{user?.name}</span>
+                  </Button>
+                </Link>
+                
+                {/* Admin Dashboard Link */}
+                {user?.role === 'admin' && (
+                  <Link to="/admin">
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Settings className="h-4 w-4" />
+                      <span className="hidden sm:inline">لوحة الإدارة</span>
+                    </Button>
+                  </Link>
+                )}
+                
+                <Button variant="ghost" size="sm" className="gap-2" onClick={handleLogout}>
+                  <LogOut className="h-4 w-4" />
+                  <span className="hidden sm:inline">تسجيل الخروج</span>
+                </Button>
+              </>
+            ) : (
+              <Link to="/login">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <User className="h-4 w-4" />
+                  <span className="hidden sm:inline">تسجيل الدخول</span>
+                </Button>
+              </Link>
+            )}
             
             <Link to="/categories">
               <Button variant="order" size="sm" className="gap-2">
@@ -35,9 +71,11 @@ const Header = () => {
               <Button variant="outline" size="sm" className="gap-2 relative">
                 <ShoppingCart className="h-4 w-4" />
                 <span className="hidden sm:inline">السلة</span>
-                <span className="absolute -top-2 -right-2 bg-pizza-red text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  0
-                </span>
+                {totalItems > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-pizza-red text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {totalItems}
+                  </span>
+                )}
               </Button>
             </Link>
           </div>

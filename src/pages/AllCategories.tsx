@@ -2,64 +2,35 @@ import Header from "@/components/Header";
 import CategoryCard from "@/components/CategoryCard";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-
-import pizzaEastern from "@/assets/pizza-eastern.jpg";
-import pizzaWestern from "@/assets/pizza-western.jpg";
-import fatayer from "@/assets/fatayer.jpg";
-import salads from "@/assets/salads.jpg";
-
-const allCategories = [
-  {
-    id: "eastern-pizza",
-    title: "بيتزا شرقي",
-    image: pizzaEastern,
-    description: "بيتزا بنكهات شرقية أصيلة مع الزعتر والجبنة"
-  },
-  {
-    id: "western-pizza",
-    title: "بيتزا غربي", 
-    image: pizzaWestern,
-    description: "بيتزا كلاسيكية مع الطماطم والجبنة والريحان"
-  },
-  {
-    id: "fatayer",
-    title: "الفطائر",
-    image: fatayer,
-    description: "فطائر شرقية محشوة بالسبانخ واللحمة والجبنة"
-  },
-  {
-    id: "salads",
-    title: "السلطات",
-    image: salads,
-    description: "سلطات طازجة ومتنوعة لوجبة صحية"
-  },
-  {
-    id: "appetizers",
-    title: "المقبلات",
-    image: "/placeholder.svg?height=300&width=300",
-    description: "مقبلات شهية لبداية مثالية لوجبتك"
-  },
-  {
-    id: "desserts",
-    title: "الحلويات",
-    image: "/placeholder.svg?height=300&width=300",
-    description: "حلويات شرقية وغربية لخاتمة حلوة"
-  },
-  {
-    id: "beverages",
-    title: "المشروبات",
-    image: "/placeholder.svg?height=300&width=300",
-    description: "مشروبات طازجة وعصائر طبيعية"
-  },
-  {
-    id: "breakfast",
-    title: "الإفطار",
-    image: "/placeholder.svg?height=300&width=300",
-    description: "وجبات إفطار شهية لبداية يوم مميز"
-  }
-];
+import { useState, useEffect } from "react";
+import { apiService, Category } from "@/services/api";
+import { useToast } from "@/hooks/use-toast";
 
 const AllCategories = () => {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getCategories();
+      setCategories(response.categories || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+      toast({
+        variant: "destructive",
+        title: "خطأ",
+        description: "حدث خطأ في تحميل الأقسام. يرجى المحاولة مرة أخرى.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -87,21 +58,37 @@ const AllCategories = () => {
       {/* Categories Grid */}
       <section className="py-12">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-            {allCategories.map((category) => (
-              <Link key={category.id} to={`/category/${category.id}`}>
-                <div className="group">
-                  <CategoryCard
-                    title={category.title}
-                    image={category.image}
-                  />
-                  <p className="text-muted-foreground text-sm mt-3 px-2 group-hover:text-foreground transition-colors">
-                    {category.description}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="text-lg text-muted-foreground">جاري تحميل الأقسام...</div>
+            </div>
+          ) : categories.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              {categories.map((category) => (
+                <Link key={category._id} to={`/category/${category.slug}`}>
+                  <div className="group">
+                    <CategoryCard
+                      title={category.name}
+                      image={category.image?.url || "/placeholder.svg?height=300&width=300"}
+                    />
+                    <p className="text-muted-foreground text-sm mt-3 px-2 group-hover:text-foreground transition-colors">
+                      {category.description || "استكشف أشهى الأطباق في هذا القسم"}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🍽️</div>
+              <h3 className="text-2xl font-semibold text-foreground mb-2">
+                لا توجد أقسام متاحة حالياً
+              </h3>
+              <p className="text-muted-foreground mb-6">
+                يرجى المحاولة مرة أخرى لاحقاً
+              </p>
+            </div>
+          )}
         </div>
       </section>
 

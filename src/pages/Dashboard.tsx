@@ -2,6 +2,8 @@ import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { 
   ArrowRight, 
   User, 
@@ -11,49 +13,90 @@ import {
   LogOut,
   Edit,
   Eye,
-  Package
+  Package,
+  Loader2,
+  Phone,
+  ShoppingBag
 } from "lucide-react";
-import { Link } from "react-router-dom";
-
-interface Order {
-  id: string;
-  date: string;
-  total: number;
-  status: "delivered" | "preparing" | "on-way" | "cancelled";
-  items: number;
-}
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useEffect, useState } from "react";
+import { apiService, Order } from "@/services/api";
+import { toast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
-  const user = {
-    name: "أحمد محمد",
-    email: "ahmed@example.com",
-    phone: "01234567890",
-    joinDate: "2024-01-15"
+  const { user, logout, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Fetch user orders
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!isAuthenticated || !user) return;
+      
+      try {
+        setOrdersLoading(true);
+        const response = await apiService.getUserOrders();
+        if (response.orders) {
+          setOrders(response.orders);
+        } else if (Array.isArray(response)) {
+          // Fallback in case the response format changes
+          setOrders(response);
+        }
+      } catch (error) {
+        console.error('Failed to fetch orders:', error);
+        toast({
+          title: "خطأ في تحميل الطلبات",
+          description: "فشل في تحميل قائمة الطلبات",
+          variant: "destructive",
+        });
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [isAuthenticated, user]);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
   };
 
-  const orders: Order[] = [
-    {
-      id: "ORD-001",
-      date: "2024-01-20",
-      total: 75,
-      status: "delivered",
-      items: 3
-    },
-    {
-      id: "ORD-002", 
-      date: "2024-01-18",
-      total: 45,
-      status: "preparing",
-      items: 2
-    },
-    {
-      id: "ORD-003",
-      date: "2024-01-15",
-      total: 90,
-      status: "delivered",
-      items: 4
-    }
-  ];
+  const handleViewOrder = (order: Order) => {
+    setSelectedOrder(order);
+    setOrderDetailsOpen(true);
+  };
+
+  const handleReorder = async (order: Order) => {
+    // Implementation for reordering functionality
+    toast({
+      title: "إعادة الطلب",
+      description: "سيتم إضافة العناصر إلى السلة قريباً",
+    });
+  };
+
+  // Show loading or redirect if user is not available
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">🍕</div>
+          <p className="text-muted-foreground">جاري تحميل بياناتك...</p>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusColor = (status: Order["status"]) => {
     switch (status) {
@@ -61,10 +104,12 @@ const Dashboard = () => {
         return "bg-green-100 text-green-800";
       case "preparing":
         return "bg-yellow-100 text-yellow-800";
-      case "on-way":
+      case "on_the_way":
         return "bg-blue-100 text-blue-800";
       case "cancelled":
         return "bg-red-100 text-red-800";
+      case "pending":
+        return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -76,10 +121,12 @@ const Dashboard = () => {
         return "تم التوصيل";
       case "preparing":
         return "قيد التحضير";
-      case "on-way":
+      case "on_the_way":
         return "في الطريق";
       case "cancelled":
         return "ملغي";
+      case "pending":
+        return "في الانتظار";
       default:
         return "غير معروف";
     }
@@ -132,11 +179,11 @@ const Dashboard = () => {
                   </div>
                   <div>
                     <label className="text-sm text-muted-foreground">الهاتف</label>
-                    <p className="font-medium">{user.phone}</p>
+                    <p className="font-medium">{user.phone || 'غير محدد'}</p>
                   </div>
                   <div>
                     <label className="text-sm text-muted-foreground">تاريخ الانضمام</label>
-                    <p className="font-medium">{user.joinDate}</p>
+                    <p className="font-medium">{new Date(user.createdAt).toLocaleDateString('ar-EG')}</p>
                   </div>
                   <Button variant="outline" className="w-full gap-2">
                     <Edit className="h-4 w-4" />
@@ -159,7 +206,11 @@ const Dashboard = () => {
                     <CreditCard className="h-4 w-4" />
                     طرق الدفع
                   </Button>
-                  <Button variant="destructive" className="w-full justify-start gap-2">
+                  <Button 
+                    variant="destructive" 
+                    className="w-full justify-start gap-2"
+                    onClick={handleLogout}
+                  >
                     <LogOut className="h-4 w-4" />
                     تسجيل الخروج
                   </Button>
@@ -177,36 +228,49 @@ const Dashboard = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {orders.length > 0 ? (
+                  {ordersLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                      <span className="mr-2">جاري تحميل الطلبات...</span>
+                    </div>
+                  ) : orders.length > 0 ? (
                     <div className="space-y-4">
                       {orders.map((order) => (
                         <div 
-                          key={order.id} 
+                          key={order._id} 
                           className="border border-border rounded-lg p-4 hover:bg-muted/30 transition-colors"
                         >
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
-                              <span className="font-semibold">طلب #{order.id}</span>
+                              <span className="font-semibold">طلب #{order._id.slice(-6).toUpperCase()}</span>
                               <Badge className={getStatusColor(order.status)}>
                                 {getStatusText(order.status)}
                               </Badge>
                             </div>
                             <span className="text-muted-foreground text-sm">
-                              {order.date}
+                              {new Date(order.createdAt).toLocaleDateString('ar-EG')}
                             </span>
                           </div>
                           
                           <div className="flex items-center justify-between">
                             <div className="text-sm text-muted-foreground">
-                              {order.items} أصناف • {order.total} ج.م
+                              {order.items.length} أصناف • {order.total} ج.م
                             </div>
                             <div className="flex gap-2">
-                              <Button size="sm" variant="outline">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleViewOrder(order)}
+                              >
                                 <Eye className="h-3 w-3 ml-1" />
                                 عرض
                               </Button>
                               {order.status === "delivered" && (
-                                <Button size="sm" variant="order">
+                                <Button 
+                                  size="sm" 
+                                  variant="default"
+                                  onClick={() => handleReorder(order)}
+                                >
                                   إعادة الطلب
                                 </Button>
                               )}
@@ -243,14 +307,14 @@ const Dashboard = () => {
                 
                 <Card className="text-center p-6">
                   <div className="text-2xl font-bold text-pizza-orange">
-                    {orders.reduce((sum, order) => sum + order.total, 0)} ج.م
+                    {ordersLoading ? '--' : orders.reduce((sum, order) => sum + order.total, 0)} ج.م
                   </div>
                   <div className="text-muted-foreground">إجمالي المبلغ</div>
                 </Card>
                 
                 <Card className="text-center p-6">
                   <div className="text-2xl font-bold text-pizza-gold">
-                    {orders.filter(order => order.status === "delivered").length}
+                    {ordersLoading ? '--' : orders.filter(order => order.status === "delivered").length}
                   </div>
                   <div className="text-muted-foreground">طلبات مكتملة</div>
                 </Card>
@@ -259,6 +323,147 @@ const Dashboard = () => {
           </div>
         </div>
       </section>
+
+      {/* Order Details Dialog */}
+      <Dialog open={orderDetailsOpen} onOpenChange={setOrderDetailsOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              تفاصيل الطلب #{selectedOrder?._id.slice(-6).toUpperCase()}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedOrder && (
+            <div className="space-y-6">
+              {/* Order Status and Date */}
+              <div className="flex items-center justify-between">
+                <Badge className={getStatusColor(selectedOrder.status)}>
+                  {getStatusText(selectedOrder.status)}
+                </Badge>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="h-4 w-4" />
+                  {new Date(selectedOrder.createdAt).toLocaleDateString('ar-EG', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </div>
+              </div>
+
+              {/* Customer Information */}
+              <div className="space-y-4">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  معلومات العميل
+                </h3>
+                <div className="grid gap-3">
+                  <div className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">الاسم:</span>
+                    <span>{selectedOrder.customer.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium">الهاتف:</span>
+                    <span>{selectedOrder.customer.phone}</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
+                    <span className="font-medium">العنوان:</span>
+                    <span className="flex-1">{selectedOrder.customer.address}</span>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Order Items */}
+              <div className="space-y-4">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <ShoppingBag className="h-4 w-4" />
+                  عناصر الطلب
+                </h3>
+                <div className="space-y-3">
+                  {selectedOrder.items.map((item, index) => (
+                    <div key={index} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
+                      <div className="flex-1">
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {item.price} ج.م × {item.quantity}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold">{item.price * item.quantity} ج.م</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Order Total */}
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span>المجموع الفرعي:</span>
+                  <span>{selectedOrder.subtotal} ج.م</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>رسوم التوصيل:</span>
+                  <span>{selectedOrder.deliveryFee} ج.م</span>
+                </div>
+                <Separator />
+                <div className="flex justify-between text-lg font-bold">
+                  <span>المجموع الكلي:</span>
+                  <span className="text-pizza-red">{selectedOrder.total} ج.م</span>
+                </div>
+              </div>
+
+              {/* Payment Method */}
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">طريقة الدفع:</span>
+                <span>الدفع عند الاستلام</span>
+              </div>
+
+              {/* Notes if any */}
+              {selectedOrder.notes && (
+                <div className="space-y-2">
+                  <span className="font-medium">ملاحظات:</span>
+                  <p className="text-muted-foreground bg-muted/30 p-3 rounded-lg">
+                    {selectedOrder.notes}
+                  </p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-4">
+                {selectedOrder.status === "delivered" && (
+                  <Button 
+                    onClick={() => {
+                      handleReorder(selectedOrder);
+                      setOrderDetailsOpen(false);
+                    }}
+                    className="flex-1"
+                  >
+                    إعادة طلب نفس العناصر
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  onClick={() => setOrderDetailsOpen(false)}
+                  className="flex-1"
+                >
+                  إغلاق
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Footer */}
       <footer className="bg-pizza-brown text-white py-8">

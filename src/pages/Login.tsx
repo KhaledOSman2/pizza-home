@@ -4,11 +4,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Mail, Lock, Eye, EyeOff } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+const loginSchema = z.object({
+  email: z.string().min(1, "البريد الإلكتروني مطلوب").email("البريد الإلكتروني غير صحيح"),
+  password: z.string().min(1, "كلمة المرور مطلوبة"),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const { login, isLoading } = useAuth();
+  const navigate = useNavigate();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
+    try {
+      await login(data.email, data.password);
+      navigate('/dashboard');
+    } catch (error) {
+      // Error is handled in the AuthContext
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -43,22 +73,26 @@ const Login = () => {
               </CardHeader>
               
               <CardContent className="space-y-6">
-                <form className="space-y-4">
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                   {/* Email or Phone */}
                   <div className="space-y-2">
-                    <Label htmlFor="emailOrPhone" className="text-foreground font-medium">
-                      البريد الإلكتروني أو رقم الهاتف
+                    <Label htmlFor="email" className="text-foreground font-medium">
+                      البريد الإلكتروني
                     </Label>
                     <div className="relative">
                       <Input
-                        id="emailOrPhone"
-                        type="text"
-                        placeholder="example@email.com أو 01xxxxxxxxx"
+                        id="email"
+                        type="email"
+                        placeholder="example@email.com"
                         className="pl-10"
                         dir="ltr"
+                        {...register("email")}
                       />
                       <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     </div>
+                    {errors.email && (
+                      <p className="text-sm text-destructive">{errors.email.message}</p>
+                    )}
                   </div>
 
                   {/* Password */}
@@ -73,6 +107,7 @@ const Login = () => {
                         placeholder="أدخل كلمة المرور"
                         className="pl-10 pr-10"
                         dir="ltr"
+                        {...register("password")}
                       />
                       <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <button
@@ -87,6 +122,9 @@ const Login = () => {
                         )}
                       </button>
                     </div>
+                    {errors.password && (
+                      <p className="text-sm text-destructive">{errors.password.message}</p>
+                    )}
                   </div>
 
                   {/* Forgot Password */}
@@ -105,8 +143,9 @@ const Login = () => {
                     size="lg" 
                     variant="hero" 
                     className="w-full text-lg py-6"
+                    disabled={isLoading}
                   >
-                    تسجيل الدخول
+                    {isLoading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
                   </Button>
                 </form>
 
