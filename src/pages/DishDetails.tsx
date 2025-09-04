@@ -150,6 +150,14 @@ const DishDetails = () => {
                     <Users className="h-4 w-4" />
                     <span>يكفي {dish.serves || 1} أشخاص</span>
                   </div>
+                  
+                  {/* Availability Status */}
+                  <Badge 
+                    variant={dish.isAvailable ? "default" : "destructive"}
+                    className={dish.isAvailable ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}
+                  >
+                    {dish.isAvailable ? "متاح" : "غير متاح"}
+                  </Badge>
                 </div>
 
                 <p className="text-muted-foreground text-lg leading-relaxed">
@@ -175,41 +183,61 @@ const DishDetails = () => {
               {/* Quantity and Add to Cart */}
               <Card className="p-6 bg-pizza-cream/20">
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-lg font-semibold">الكمية</span>
-                    <div className="flex items-center gap-3">
+                  {dish.isAvailable ? (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-semibold">الكمية</span>
+                        <div className="flex items-center gap-3">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                          >
+                            <Minus className="h-4 w-4" />
+                          </Button>
+                          <span className="font-semibold text-lg w-8 text-center">{quantity}</span>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => setQuantity(quantity + 1)}
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xl font-bold">
+                        <span>المجموع</span>
+                        <span className="text-pizza-red">{totalPrice} ج.م</span>
+                      </div>
+
                       <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                        size="lg" 
+                        variant="order" 
+                        className="w-full text-lg py-6"
+                        onClick={handleAddToCart}
                       >
-                        <Minus className="h-4 w-4" />
+                        <Plus className="h-5 w-5" />
+                        أضف للسلة ({quantity})
                       </Button>
-                      <span className="font-semibold text-lg w-8 text-center">{quantity}</span>
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      <div className="text-lg font-semibold text-red-600 mb-2">
+                        هذا الطبق غير متاح حالياً
+                      </div>
+                      <p className="text-muted-foreground mb-4">
+                        يرجى العودة لاحقاً أو تصفح الأطباق الأخرى
+                      </p>
                       <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => setQuantity(quantity + 1)}
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => window.history.back()}
                       >
-                        <Plus className="h-4 w-4" />
+                        العودة للخلف
                       </Button>
                     </div>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xl font-bold">
-                    <span>المجموع</span>
-                    <span className="text-pizza-red">{totalPrice} ج.م</span>
-                  </div>
-
-                  <Button 
-                    size="lg" 
-                    variant="order" 
-                    className="w-full text-lg py-6"
-                    onClick={handleAddToCart}
-                  >
-                    <Plus className="h-5 w-5" />
-                    أضف للسلة ({quantity})
-                  </Button>
+                  )}
                 </div>
               </Card>
             </div>

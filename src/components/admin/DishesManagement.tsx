@@ -43,7 +43,7 @@ const DishesManagement = () => {
     try {
       setIsLoading(true);
       const [dishesRes, categoriesRes] = await Promise.all([
-        apiService.getDishes(),
+        apiService.getAllDishes(), // Use getAllDishes to include unavailable dishes for admin
         apiService.getCategories()
       ]);
       

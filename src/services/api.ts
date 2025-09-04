@@ -230,6 +230,19 @@ class ApiService {
     return this.makeRequest<{ results: number; dishes: Dish[] }>(endpoint);
   }
 
+  // Admin method to get all dishes including unavailable ones
+  async getAllDishes(categorySlug?: string, searchQuery?: string): Promise<{ results: number; dishes: Dish[] }> {
+    const params = new URLSearchParams();
+    if (categorySlug) params.append('category', categorySlug);
+    if (searchQuery) params.append('q', searchQuery);
+    params.append('includeUnavailable', 'true'); // Include unavailable dishes for admin
+    
+    const queryString = params.toString();
+    const endpoint = `/dishes?${queryString}`;
+    
+    return this.makeRequest<{ results: number; dishes: Dish[] }>(endpoint);
+  }
+
   async getDish(dishId: string): Promise<{ dish: Dish }> {
     return this.makeRequest<{ dish: Dish }>(`/dishes/${dishId}`);
   }

@@ -8,8 +8,15 @@ const { processImageUpload, deleteFromCloudinary } = require('../utils/imageUplo
 exports.list = catchAsync(async (req, res) => {
   const q = (req.query.q || '').toString().trim();
   const categoryParam = (req.query.category || '').toString().trim();
+  const includeUnavailable = req.query.includeUnavailable === 'true'; // Admin can see all
 
   const filter = {};
+  
+  // Only show available dishes for regular users (not admin requests)
+  if (!includeUnavailable) {
+    filter.isAvailable = true;
+  }
+  
   if (q) filter.name = { $regex: q, $options: 'i' };
   if (categoryParam) {
     let categoryId = null;
@@ -29,12 +36,21 @@ exports.list = catchAsync(async (req, res) => {
 
 exports.getOne = catchAsync(async (req, res, next) => {
   const idOrSlug = req.params.id;
+  const includeUnavailable = req.query.includeUnavailable === 'true'; // Admin can see unavailable dishes
+  
   let dish;
   if (mongoose.Types.ObjectId.isValid(idOrSlug)) {
     dish = await Dish.findById(idOrSlug).populate('category', 'name slug');
   }
   if (!dish) dish = await Dish.findOne({ slug: idOrSlug }).populate('category', 'name slug');
+  
   if (!dish) return next(new ApiError('Dish not found', 404));
+  
+  // If dish is not available and this is not an admin request, return 404
+  if (!dish.isAvailable && !includeUnavailable) {
+    return next(new ApiError('Dish not available', 404));
+  }
+  
   res.status(200).json({ dish });
 });
 
