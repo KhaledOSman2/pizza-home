@@ -30,10 +30,20 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // CORS
-const allowedOrigin = process.env.CLIENT_URL || 'http://localhost:8080';
+const allowedOrigins = [
+  process.env.CLIENT_URL || 'http://localhost:8080',
+  'https://pizza-home-nvpx33k6f-khaledosman2s-projects.vercel.app',
+  'https://pizza-home.vercel.app'
+];
 app.use(
   cors({
-    origin: allowedOrigin,
+    origin: function(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],

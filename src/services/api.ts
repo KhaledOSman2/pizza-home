@@ -1,6 +1,6 @@
 // API service for handling HTTP requests
 const API_BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://pizza-home-backend.onrender.com/api'  // تحتاج لتغيير هذا إلى عنوان Backend الخاص بك
+  ? 'https://spectacular-mouse-pizaahome-ee337475.koyeb.app/api'  // عنوان Koyeb الخاص بك
   : '/api'; // يستخدم البروكسي من vite.config.ts في بيئة التطوير
 
 interface ApiResponse<T = any> {
