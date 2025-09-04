@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useRef } from 'react';
 import { apiService, Order } from '@/services/api';
 import { useAuth } from './AuthContext';
 
@@ -18,6 +18,7 @@ export const AdminNotificationProvider: React.FC<AdminNotificationProviderProps>
   const { user } = useAuth();
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const previousOrdersRef = useRef<string>("");
 
   const notifyOrderTableUpdate = () => {
     console.log('notifyOrderTableUpdate: Event dispatched');
@@ -44,17 +45,22 @@ export const AdminNotificationProvider: React.FC<AdminNotificationProviderProps>
       const response = await apiService.getUserOrders(); // For admin, this returns all orders
       const orders = response.orders || [];
       const pendingCount = orders.filter(order => order.status === 'pending').length;
+      const currentOrdersJSON = JSON.stringify(orders);
+      const previousOrdersJSON = previousOrdersRef.current;
 
-      if (pendingCount > pendingOrdersCount) {
-        playNotificationSound(); // تشغيل الصوت عند وجود طلب جديد
+      // تحقق من وجود تغييرات في الطلبات
+      if (currentOrdersJSON !== previousOrdersJSON) {
+        console.log('Orders have changed, updating table');
+        notifyOrderTableUpdate();
+        
+        // تحقق من وجود طلبات جديدة
+        if (pendingCount > pendingOrdersCount) {
+          playNotificationSound();
+        }
       }
 
       setPendingOrdersCount(pendingCount);
-
-      console.log('refreshNotifications: Pending orders count updated');
-
-      // Notify order table to update
-      notifyOrderTableUpdate();
+      previousOrdersRef.current = currentOrdersJSON;
     } catch (error) {
       console.error('Failed to fetch pending orders:', error);
     } finally {
