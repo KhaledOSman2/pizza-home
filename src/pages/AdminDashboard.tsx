@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminNotifications } from "@/contexts/AdminNotificationContext";
+import { useOrderNotifications } from "@/hooks/use-order-notifications";
 import { useEffect, useState } from "react";
 import { apiService, Order, Category, Dish, User } from "@/services/api";
 import { toast } from "@/hooks/use-toast";
@@ -27,7 +29,11 @@ import { CategoriesManagement, DishesManagement, OrdersManagement, UsersManageme
 
 const AdminDashboard = () => {
   const { user, logout, isAuthenticated } = useAuth();
+  const { pendingOrdersCount, refreshNotifications } = useAdminNotifications();
   const navigate = useNavigate();
+  
+  // Enable order notifications
+  useOrderNotifications();
   const [stats, setStats] = useState({
     totalOrders: 0,
     totalCategories: 0,
@@ -75,13 +81,17 @@ const AdminDashboard = () => {
         const categories = categoriesRes.categories || [];
         const dishes = dishesRes.dishes || [];
 
+        // Calculate revenue only from delivered orders
+        const deliveredOrders = orders.filter(order => order.status === 'delivered');
+        const totalRevenue = deliveredOrders.reduce((sum, order) => sum + order.total, 0);
+
         setStats({
           totalOrders: orders.length,
           totalCategories: categories.length,
           totalDishes: dishes.length,
           totalUsers: 0, // Will implement user count later
-          revenue: orders.reduce((sum, order) => sum + order.total, 0),
-          pendingOrders: orders.filter(order => order.status === 'pending').length
+          revenue: totalRevenue,
+          pendingOrders: pendingOrdersCount // Use the context value
         });
         
       } catch (error) {
@@ -97,7 +107,7 @@ const AdminDashboard = () => {
     };
 
     fetchStats();
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, pendingOrdersCount]); // Added pendingOrdersCount dependency
 
   const handleLogout = async () => {
     await logout();
@@ -155,16 +165,25 @@ const AdminDashboard = () => {
       <section className="py-12">
         <div className="container mx-auto px-4">
           
+          
+          
           {/* Statistics Cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
+            <Card className={pendingOrdersCount > 0 ? "ring-2 ring-green-400 ring-opacity-50" : ""}>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-muted-foreground text-sm">إجمالي الطلبات</p>
-                    <p className="text-2xl font-bold text-pizza-red">
-                      {isLoading ? '--' : stats.totalOrders}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-2xl font-bold text-pizza-red">
+                        {isLoading ? '--' : stats.totalOrders}
+                      </p>
+                      {pendingOrdersCount > 0 && (
+                        <Badge className="bg-green-500 text-white animate-pulse">
+                          {pendingOrdersCount} جديد
+                        </Badge>
+                      )}
+                    </div>
                   </div>
                   <ShoppingBag className="h-8 w-8 text-pizza-red" />
                 </div>
@@ -217,9 +236,10 @@ const AdminDashboard = () => {
           {/* Management Tabs */}
           <Tabs defaultValue="orders" className="space-y-6">
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="orders" className="flex items-center gap-2">
+              <TabsTrigger value="orders" className="flex items-center gap-2 relative">
                 <ShoppingBag className="h-4 w-4" />
                 إدارة الطلبات
+                
               </TabsTrigger>
               <TabsTrigger value="categories" className="flex items-center gap-2">
                 <Package className="h-4 w-4" />
@@ -236,7 +256,7 @@ const AdminDashboard = () => {
             </TabsList>
 
             <TabsContent value="orders">
-              <OrdersManagement />
+              <OrdersManagement onOrderStatusChange={refreshNotifications} />
             </TabsContent>
 
             <TabsContent value="categories">

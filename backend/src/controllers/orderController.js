@@ -29,7 +29,7 @@ exports.create = catchAsync(async (req, res, next) => {
   }
 
   const subtotal = normalizedItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
-  const deliveryFee = 30;
+  const deliveryFee = 0;
   const total = subtotal + deliveryFee;
 
   const order = await Order.create({
@@ -66,9 +66,40 @@ exports.getOne = catchAsync(async (req, res, next) => {
 exports.updateStatus = catchAsync(async (req, res, next) => {
   const order = await Order.findById(req.params.id);
   if (!order) return next(new ApiError('Order not found', 404));
-  const { status } = req.body;
+  const { status, note } = req.body;
   if (!allowedStatuses.includes(status)) return next(new ApiError('Invalid status', 400));
-  order.status = status;
+  
+  // Only track if status actually changed
+  if (order.status !== status) {
+    // Add status change to history
+    order.statusHistory.push({
+      status,
+      timestamp: new Date(),
+      updatedBy: req.user._id,
+      note: note || getStatusChangeNote(status)
+    });
+    
+    order.status = status;
+  }
+  
   await order.save();
   res.status(200).json({ order });
 });
+
+// Helper function to get default status change notes in Arabic
+const getStatusChangeNote = (status) => {
+  switch (status) {
+    case 'pending':
+      return 'تم إرجاع الطلب إلى قائمة الانتظار';
+    case 'preparing':
+      return 'بدأ تحضير الطلب';
+    case 'on_the_way':
+      return 'الطلب في الطريق للتوصيل';
+    case 'delivered':
+      return 'تم تسليم الطلب بنجاح';
+    case 'cancelled':
+      return 'تم إلغاء الطلب';
+    default:
+      return 'تم تحديث حالة الطلب';
+  }
+};

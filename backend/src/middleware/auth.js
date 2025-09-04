@@ -24,6 +24,11 @@ exports.protect = catchAsync(async (req, _res, next) => {
 
   const currentUser = await User.findById(decoded.id);
   if (!currentUser) return next(new ApiError('The user belonging to this token no longer exists', 401));
+  
+  // Check if user is blocked
+  if (currentUser.isBlocked) {
+    return next(new ApiError('تم حظر حسابك. يرجى الاتصال بالدعم للحصول على مزيد من المعلومات.', 403));
+  }
 
   req.user = currentUser;
   next();

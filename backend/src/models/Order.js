@@ -12,6 +12,7 @@ const orderItemSchema = new mongoose.Schema(
 
 const orderSchema = new mongoose.Schema(
   {
+    orderNumber: { type: String, unique: true }, // Will be generated automatically
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     customer: {
       name: { type: String, required: true },
@@ -27,10 +28,51 @@ const orderSchema = new mongoose.Schema(
       enum: ['pending', 'preparing', 'on_the_way', 'delivered', 'cancelled'],
       default: 'pending',
     },
+    statusHistory: [{
+      status: {
+        type: String,
+        enum: ['pending', 'preparing', 'on_the_way', 'delivered', 'cancelled'],
+        required: true
+      },
+      timestamp: { type: Date, default: Date.now },
+      updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      note: String
+    }],
     notes: String,
     paymentMethod: { type: String, enum: ['cod', 'card'], default: 'cod' },
   },
   { timestamps: true }
 );
+
+// Generate unique numeric order number and initialize status history before saving
+orderSchema.pre('save', async function (next) {
+  if (!this.orderNumber) {
+    // Generate a 6-digit order number
+    let orderNumber;
+    let exists = true;
+    
+    while (exists) {
+      // Generate random 6-digit number
+      orderNumber = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // Check if this number already exists
+      const existingOrder = await this.constructor.findOne({ orderNumber });
+      exists = !!existingOrder;
+    }
+    
+    this.orderNumber = orderNumber;
+  }
+  
+  // Initialize status history with the initial status if it's a new order
+  if (this.isNew && this.statusHistory.length === 0) {
+    this.statusHistory.push({
+      status: this.status,
+      timestamp: new Date(),
+      note: 'طلب جديد'
+    });
+  }
+  
+  next();
+});
 
 module.exports = mongoose.model('Order', orderSchema);

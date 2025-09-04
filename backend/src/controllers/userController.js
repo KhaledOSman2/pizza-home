@@ -12,6 +12,9 @@ const publicUser = (u) => ({
   avatar: u.avatar,
   phone: u.phone,
   address: u.address,
+  isBlocked: u.isBlocked || false,
+  blockReason: u.blockReason,
+  blockedAt: u.blockedAt,
   createdAt: u.createdAt,
   updatedAt: u.updatedAt,
 });
@@ -65,12 +68,32 @@ exports.updateUser = catchAsync(async (req, res, next) => {
   const user = await User.findById(req.params.id);
   if (!user) return next(new ApiError('User not found', 404));
   
-  const { name, email, phone, address, role } = req.body;
+  // Prevent admin from blocking themselves
+  if (req.body.isBlocked === true && req.user.id === user.id) {
+    return next(new ApiError('لا يمكنك حظر حسابك الخاص', 400));
+  }
+  
+  const { name, email, phone, address, role, isBlocked, blockReason } = req.body;
   if (typeof name === 'string') user.name = name;
   if (typeof email === 'string') user.email = email;
   if (typeof phone === 'string') user.phone = phone;
   if (typeof address === 'string') user.address = address;
   if (typeof role === 'string' && ['customer', 'admin'].includes(role)) user.role = role;
+  
+  // Handle blocking/unblocking
+  if (typeof isBlocked === 'boolean') {
+    user.isBlocked = isBlocked;
+    if (isBlocked) {
+      user.blockReason = blockReason || '';
+      user.blockedAt = new Date();
+      user.blockedBy = req.user.id;
+    } else {
+      // When unblocking, clear block reason and timestamp
+      user.blockReason = undefined;
+      user.blockedAt = undefined;
+      user.blockedBy = undefined;
+    }
+  }
   
   await user.save();
   res.status(200).json({ user: publicUser(user) });

@@ -33,6 +33,9 @@ interface User {
   };
   phone?: string;
   address?: string;
+  isBlocked?: boolean;
+  blockReason?: string;
+  blockedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -87,6 +90,7 @@ interface Dish {
 
 interface Order {
   _id: string;
+  orderNumber?: string; // New numeric order number field
   user?: string;
   customer: {
     name: string;
@@ -98,6 +102,12 @@ interface Order {
   deliveryFee: number;
   total: number;
   status: 'pending' | 'preparing' | 'on_the_way' | 'delivered' | 'cancelled';
+  statusHistory?: {
+    status: 'pending' | 'preparing' | 'on_the_way' | 'delivered' | 'cancelled';
+    timestamp: string;
+    updatedBy?: string;
+    note?: string;
+  }[];
   notes?: string;
   paymentMethod: 'cod' | 'card';
   createdAt: string;

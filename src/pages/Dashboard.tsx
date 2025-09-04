@@ -16,13 +16,15 @@ import {
   Package,
   Loader2,
   Phone,
-  ShoppingBag
+  ShoppingBag,
+  History
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect, useState } from "react";
 import { apiService, Order } from "@/services/api";
 import { toast } from "@/hooks/use-toast";
+import OrderTrackingDialog from "@/components/admin/OrderTrackingDialog";
 
 const Dashboard = () => {
   const { user, logout, isAuthenticated } = useAuth();
@@ -31,6 +33,8 @@ const Dashboard = () => {
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
+  const [trackingOrder, setTrackingOrder] = useState<Order | null>(null);
+  const [trackingOpen, setTrackingOpen] = useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -76,6 +80,11 @@ const Dashboard = () => {
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
     setOrderDetailsOpen(true);
+  };
+
+  const handleTrackOrder = (order: Order) => {
+    setTrackingOrder(order);
+    setTrackingOpen(true);
   };
 
   const handleReorder = async (order: Order) => {
@@ -242,7 +251,7 @@ const Dashboard = () => {
                         >
                           <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-3">
-                              <span className="font-semibold">طلب #{order._id.slice(-6).toUpperCase()}</span>
+                              <span className="font-semibold">طلب {order.orderNumber || order._id.slice(-6)}</span>
                               <Badge className={getStatusColor(order.status)}>
                                 {getStatusText(order.status)}
                               </Badge>
@@ -257,6 +266,14 @@ const Dashboard = () => {
                               {order.items.length} أصناف • {order.total} ج.م
                             </div>
                             <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleTrackOrder(order)}
+                              >
+                                <History className="h-3 w-3 ml-1" />
+                                تتبع
+                              </Button>
                               <Button 
                                 size="sm" 
                                 variant="outline"
@@ -307,9 +324,9 @@ const Dashboard = () => {
                 
                 <Card className="text-center p-6">
                   <div className="text-2xl font-bold text-pizza-orange">
-                    {ordersLoading ? '--' : orders.reduce((sum, order) => sum + order.total, 0)} ج.م
+                    {ordersLoading ? '--' : orders.filter(order => order.status === 'delivered').reduce((sum, order) => sum + order.total, 0)} ج.م
                   </div>
-                  <div className="text-muted-foreground">إجمالي المبلغ</div>
+                  <div className="text-muted-foreground">إجمالي المدفوع</div>
                 </Card>
                 
                 <Card className="text-center p-6">
@@ -330,7 +347,7 @@ const Dashboard = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Package className="h-5 w-5" />
-              تفاصيل الطلب #{selectedOrder?._id.slice(-6).toUpperCase()}
+              تفاصيل الطلب {selectedOrder ? (selectedOrder.orderNumber || selectedOrder._id.slice(-6)) : ''}
             </DialogTitle>
           </DialogHeader>
           
@@ -464,6 +481,13 @@ const Dashboard = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Order Tracking Dialog */}
+      <OrderTrackingDialog
+        order={trackingOrder}
+        open={trackingOpen}
+        onOpenChange={setTrackingOpen}
+      />
 
       {/* Footer */}
       <footer className="bg-pizza-brown text-white py-8">

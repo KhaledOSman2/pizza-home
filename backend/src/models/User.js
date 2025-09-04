@@ -28,6 +28,10 @@ const userSchema = new mongoose.Schema(
     },
     phone: { type: String, trim: true },
     address: { type: String, trim: true },
+    isBlocked: { type: Boolean, default: false },
+    blockReason: { type: String, trim: true },
+    blockedAt: { type: Date },
+    blockedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }
 );

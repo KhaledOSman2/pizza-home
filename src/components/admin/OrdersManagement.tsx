@@ -17,20 +17,36 @@ import {
   CreditCard,
   Filter,
   Download,
-  Search
+  Search,
+  History
 } from "lucide-react";
 import { apiService, Order } from "@/services/api";
 import { toast } from "@/hooks/use-toast";
+import OrderTrackingDialog from "./OrderTrackingDialog";
 
-const OrdersManagement = () => {
+interface OrdersManagementProps {
+  onOrderStatusChange?: () => void;
+}
+
+const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
+  const [trackingOrder, setTrackingOrder] = useState<Order | null>(null);
+  const [trackingOpen, setTrackingOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
+
+  // Check if order is new (within last 24 hours) and has pending status
+  const isNewOrder = (order: Order) => {
+    const orderDate = new Date(order.createdAt);
+    const now = new Date();
+    const diffInHours = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
+    return diffInHours <= 24 && order.status === 'pending';
+  };
 
   // Fetch orders
   const fetchOrders = async () => {
@@ -68,6 +84,9 @@ const OrdersManagement = () => {
         
         // Search in order ID
         if (order._id.toLowerCase().includes(searchLower)) return true;
+        
+        // Search in order number (numeric)
+        if (order.orderNumber && order.orderNumber.includes(searchTerm)) return true;
         
         // Search in customer info
         if (order.customer.name.toLowerCase().includes(searchLower)) return true;
@@ -150,6 +169,11 @@ const OrdersManagement = () => {
         if (selectedOrder && selectedOrder._id === orderId) {
           setSelectedOrder(response.order);
         }
+        
+        // Trigger notification refresh if callback provided
+        if (onOrderStatusChange) {
+          onOrderStatusChange();
+        }
       }
     } catch (error) {
       console.error('Failed to update order status:', error);
@@ -166,6 +190,11 @@ const OrdersManagement = () => {
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
     setOrderDetailsOpen(true);
+  };
+
+  const handleTrackOrder = (order: Order) => {
+    setTrackingOrder(order);
+    setTrackingOpen(true);
   };
 
   const getOrderStats = () => {
@@ -257,10 +286,15 @@ const OrdersManagement = () => {
               <div key={order._id} className="border rounded-lg p-4 hover:bg-muted/30 transition-colors">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <span className="font-semibold">طلب #{order._id.slice(-6).toUpperCase()}</span>
+                    <span className="font-semibold">طلب #{order.orderNumber || order._id.slice(-6)}</span>
                     <Badge className={getStatusColor(order.status)}>
                       {getStatusText(order.status)}
                     </Badge>
+                    {isNewOrder(order) && (
+                  <Badge className="bg-green-500 hover:bg-green-600 text-white ml-2 animate-pulse shadow-md font-bold">
+                        جديد
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-muted-foreground text-sm">
@@ -328,10 +362,16 @@ const OrdersManagement = () => {
                     )}
                   </div>
                   
-                  <Button size="sm" variant="outline" onClick={() => handleViewOrder(order)}>
-                    <Eye className="h-3 w-3 ml-1" />
-                    عرض التفاصيل
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => handleTrackOrder(order)}>
+                      <History className="h-3 w-3 ml-1" />
+                      تتبع الطلب
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleViewOrder(order)}>
+                      <Eye className="h-3 w-3 ml-1" />
+                      عرض التفاصيل
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -351,7 +391,7 @@ const OrdersManagement = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ShoppingBag className="h-5 w-5" />
-              تفاصيل الطلب #{selectedOrder?._id.slice(-6).toUpperCase()}
+              تفاصيل الطلب {selectedOrder ? (selectedOrder.orderNumber || selectedOrder._id.slice(-6)) : ''}
             </DialogTitle>
           </DialogHeader>
           
@@ -411,9 +451,9 @@ const OrdersManagement = () => {
                   {selectedOrder.items.map((item, index) => (
                     <div key={index} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
                       <div className="flex-1">
-                        <div className="font-medium">{item.name}</div>
+                        <div className="font-medium">{item.quantity}× {item.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          {item.price} ج.م × {item.quantity}
+                          {item.price} ج.م 
                         </div>
                       </div>
                       <div className="text-right">
@@ -492,6 +532,13 @@ const OrdersManagement = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Order Tracking Dialog */}
+      <OrderTrackingDialog
+        order={trackingOrder}
+        open={trackingOpen}
+        onOpenChange={setTrackingOpen}
+      />
     </Card>
   );
 };

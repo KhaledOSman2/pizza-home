@@ -36,6 +36,12 @@ exports.login = catchAsync(async (req, res, next) => {
   if (!user || !(await user.correctPassword(password, user.password))) {
     return next(new ApiError('Incorrect email or password', 401));
   }
+  
+  // Check if user is blocked
+  if (user.isBlocked) {
+    return next(new ApiError('تم حظر حسابك. يرجى الاتصال بالدعم للحصول على مزيد من المعلومات.', 403));
+  }
+  
   const token = signAccessToken(user._id);
   setAuthCookie(res, token);
   res.status(200).json({ user: publicUser(user), token });

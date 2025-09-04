@@ -3,10 +3,12 @@ import { Button } from "./ui/button";
 import { Link } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAdminNotifications } from "@/contexts/AdminNotificationContext";
 
 const Header = () => {
   const { getTotalItems } = useCart();
   const { user, isAuthenticated, logout } = useAuth();
+  const { pendingOrdersCount } = useAdminNotifications();
   const totalItems = getTotalItems();
   
   const handleLogout = async () => {
@@ -39,9 +41,14 @@ const Header = () => {
                 {/* Admin Dashboard Link */}
                 {user?.role === 'admin' && (
                   <Link to="/admin">
-                    <Button variant="outline" size="sm" className="gap-2">
+                    <Button variant="outline" size="sm" className="gap-2 relative">
                       <Settings className="h-4 w-4" />
                       <span className="hidden sm:inline">لوحة الإدارة</span>
+                      {pendingOrdersCount > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-green-500 hover:bg-green-600 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center animate-pulse shadow-lg ring-2 ring-green-200">
+                          {pendingOrdersCount}
+                        </span>
+                      )}
                     </Button>
                   </Link>
                 )}

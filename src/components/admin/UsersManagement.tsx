@@ -24,8 +24,10 @@ import {
 import { apiService, User as UserType } from "@/services/api";
 import { toast } from "@/hooks/use-toast";
 import UserOrdersDialog from "./UserOrdersDialog";
+import { useAuth } from "@/contexts/AuthContext";
 
 const UsersManagement = () => {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<UserType[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +46,9 @@ const UsersManagement = () => {
     address: '',
     role: 'customer' as 'customer' | 'admin'
   });
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [blockingUser, setBlockingUser] = useState<UserType | null>(null);
+  const [blockReason, setBlockReason] = useState('');
 
   // Fetch users
   const fetchUsers = async () => {
@@ -76,11 +81,19 @@ const UsersManagement = () => {
 
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(user =>
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (user.phone && user.phone.includes(searchTerm))
-      );
+      // Handle special blocked status filters
+      if (searchTerm === 'isBlocked:true') {
+        filtered = filtered.filter(user => user.isBlocked);
+      } else if (searchTerm === 'isBlocked:false') {
+        filtered = filtered.filter(user => !user.isBlocked);
+      } else {
+        // Regular search
+        filtered = filtered.filter(user =>
+          user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (user.phone && user.phone.includes(searchTerm))
+        );
+      }
     }
 
     // Filter by role
@@ -158,6 +171,70 @@ const UsersManagement = () => {
     }
   };
 
+  const handleBlockUser = async () => {
+    if (!blockingUser) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await apiService.updateUser(blockingUser.id, {
+        isBlocked: true,
+        blockReason: blockReason || undefined
+      });
+      
+      if (response.user) {
+        toast({
+          title: "تم حظر المستخدم بنجاح",
+          description: `تم حظر المستخدم "${blockingUser.name}"`,
+        });
+        
+        setUsers(prev => prev.map(user => 
+          user.id === blockingUser.id ? response.user : user
+        ));
+        setBlockDialogOpen(false);
+        setBlockingUser(null);
+        setBlockReason('');
+      }
+    } catch (error) {
+      console.error('Failed to block user:', error);
+      toast({
+        title: "فشل في حظر المستخدم",
+        description: error instanceof Error ? error.message : "حدث خطأ أثناء حظر المستخدم",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUnblockUser = async (user: UserType) => {
+    setIsSubmitting(true);
+    try {
+      const response = await apiService.updateUser(user.id, {
+        isBlocked: false
+      });
+      
+      if (response.user) {
+        toast({
+          title: "تم إلغاء حظر المستخدم بنجاح",
+          description: `تم إلغاء حظر المستخدم "${user.name}"`,
+        });
+        
+        setUsers(prev => prev.map(u => 
+          u.id === user.id ? response.user : u
+        ));
+      }
+    } catch (error) {
+      console.error('Failed to unblock user:', error);
+      toast({
+        title: "فشل في إلغاء حظر المستخدم",
+        description: error instanceof Error ? error.message : "حدث خطأ أثناء إلغاء حظر المستخدم",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleDelete = async (user: UserType) => {
     try {
       await apiService.deleteUser(user.id);
@@ -183,6 +260,7 @@ const UsersManagement = () => {
       total: users.length,
       admins: users.filter(u => u.role === 'admin').length,
       customers: users.filter(u => u.role === 'customer').length,
+      blocked: users.filter(u => u.isBlocked).length,
     };
   };
 
@@ -200,8 +278,15 @@ const UsersManagement = () => {
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="البحث بالاسم أو البريد الإلكتروني"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={searchTerm === 'isBlocked:true' || searchTerm === 'isBlocked:false' ? '' : searchTerm}
+                onChange={(e) => {
+                  // Reset status filter when user types in search
+                  if (searchTerm === 'isBlocked:true' || searchTerm === 'isBlocked:false') {
+                    setSearchTerm(e.target.value);
+                  } else {
+                    setSearchTerm(e.target.value);
+                  }
+                }}
                 className="pl-8 w-64"
               />
             </div>
@@ -215,11 +300,29 @@ const UsersManagement = () => {
                 <SelectItem value="customer">العملاء</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={searchTerm === 'isBlocked:true' ? 'blocked' : searchTerm === 'isBlocked:false' ? 'active' : 'all'} onValueChange={(value) => {
+              if (value === 'blocked') {
+                setSearchTerm('isBlocked:true');
+              } else if (value === 'active') {
+                setSearchTerm('isBlocked:false');
+              } else {
+                setSearchTerm('');
+              }
+            }}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="فلترة حسب الحالة" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع المستخدمين</SelectItem>
+                <SelectItem value="blocked">المحظورون</SelectItem>
+                <SelectItem value="active">النشطون</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         
         {/* Quick Stats */}
-        <div className="grid grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-4 gap-4 mt-4">
           <div className="text-center">
             <div className="text-lg font-bold">{stats.total}</div>
             <div className="text-xs text-muted-foreground">إجمالي المستخدمين</div>
@@ -231,6 +334,10 @@ const UsersManagement = () => {
           <div className="text-center">
             <div className="text-lg font-bold text-green-600">{stats.customers}</div>
             <div className="text-xs text-muted-foreground">العملاء</div>
+          </div>
+          <div className="text-center">
+            <div className="text-lg font-bold text-red-600">{stats.blocked}</div>
+            <div className="text-xs text-muted-foreground">المحظورون</div>
           </div>
         </div>
       </CardHeader>
@@ -266,6 +373,12 @@ const UsersManagement = () => {
                           <Shield className="h-3 w-3 ml-1" />
                           {user.role === 'admin' ? 'مدير' : 'عميل'}
                         </Badge>
+                        {user.isBlocked && (
+                          <Badge variant="destructive">
+                            <Shield className="h-3 w-3 ml-1" />
+                            محظور
+                          </Badge>
+                        )}
                       </div>
                       
                       <div className="grid md:grid-cols-2 gap-2 text-sm text-muted-foreground">
@@ -305,6 +418,32 @@ const UsersManagement = () => {
                       >
                         <ShoppingBag className="h-3 w-3 ml-1" />
                         عرض الطلبات
+                      </Button>
+                    )}
+                    {user.isBlocked ? (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => handleUnblockUser(user)}
+                        disabled={isSubmitting}
+                      >
+                        <Shield className="h-3 w-3 ml-1" />
+                        إلغاء الحظر
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          setBlockingUser(user);
+                          setBlockReason('');
+                          setBlockDialogOpen(true);
+                        }}
+                        disabled={user.id === currentUser?.id} // Prevent admin from blocking themselves
+                        title={user.id === currentUser?.id ? "لا يمكنك حظر حسابك الخاص" : ""}
+                      >
+                        <Shield className="h-3 w-3 ml-1" />
+                        حظر
                       </Button>
                     )}
                     <Button
@@ -421,6 +560,21 @@ const UsersManagement = () => {
               </Select>
             </div>
             
+            {editingUser?.isBlocked && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <Shield className="h-4 w-4 text-red-500" />
+                  <span className="font-medium text-red-700">المستخدم محظور</span>
+                </div>
+                {editingUser.blockReason && (
+                  <p className="text-sm text-red-600">السبب: {editingUser.blockReason}</p>
+                )}
+                <p className="text-xs text-red-500 mt-1">
+                  تم الحظر في: {new Date(editingUser.blockedAt!).toLocaleDateString('ar-EG')}
+                </p>
+              </div>
+            )}
+            
             <Button 
               onClick={handleUpdate} 
               disabled={isSubmitting}
@@ -452,6 +606,53 @@ const UsersManagement = () => {
           }}
         />
       )}
+
+      {/* Block User Dialog */}
+      <Dialog open={blockDialogOpen} onOpenChange={(open) => {
+        setBlockDialogOpen(open);
+        if (!open) {
+          setBlockingUser(null);
+          setBlockReason('');
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>حظر المستخدم</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {blockingUser && (
+              <div className="mb-4 p-3 bg-muted rounded-lg">
+                <p className="font-medium">{blockingUser.name}</p>
+                <p className="text-sm text-muted-foreground">{blockingUser.email}</p>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="block-reason">سبب الحظر (اختياري)</Label>
+              <Input
+                id="block-reason"
+                value={blockReason}
+                onChange={(e) => setBlockReason(e.target.value)}
+                placeholder="أدخل سبب الحظر"
+              />
+            </div>
+            <Button 
+              onClick={handleBlockUser} 
+              disabled={isSubmitting}
+              variant="destructive"
+              className="w-full"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin ml-2" />
+                  جاري الحظر...
+                </>
+              ) : (
+                "تأكيد الحظر"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
