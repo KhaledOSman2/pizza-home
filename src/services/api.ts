@@ -1,5 +1,7 @@
 // API service for handling HTTP requests
-const API_BASE_URL = '/api'; // Use proxy from vite.config.ts
+const API_BASE_URL = process.env.NODE_ENV === 'production' 
+  ? 'https://pizza-home-backend.onrender.com/api'  // تحتاج لتغيير هذا إلى عنوان Backend الخاص بك
+  : '/api'; // يستخدم البروكسي من vite.config.ts في بيئة التطوير
 
 interface ApiResponse<T = any> {
   success?: boolean;
