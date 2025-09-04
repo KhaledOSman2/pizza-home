@@ -423,20 +423,44 @@ const DishesManagement = () => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>إدارة الأطباق</CardTitle>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="h-4 w-4 ml-2" />
-                إضافة طبق جديد
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl">
-              <DialogHeader>
-                <DialogTitle>إضافة طبق جديد</DialogTitle>
-              </DialogHeader>
-              <DishForm />
-            </DialogContent>
-          </Dialog>
+          <div className="flex gap-3">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="البحث في الأطباق..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 w-64"
+              />
+            </div>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-40">
+                <SelectValue placeholder="فلترة حسب الصنف" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع الأصناف</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category._id} value={category._id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm}>
+                  <Plus className="h-4 w-4 ml-2" />
+                  إضافة طبق جديد
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>إضافة طبق جديد</DialogTitle>
+                </DialogHeader>
+                <DishForm />
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -445,9 +469,9 @@ const DishesManagement = () => {
             <Loader2 className="h-6 w-6 animate-spin" />
             <span className="mr-2">جاري تحميل الأطباق...</span>
           </div>
-        ) : dishes.length > 0 ? (
+        ) : filteredDishes.length > 0 ? (
           <div className="grid gap-4">
-            {dishes.map((dish) => (
+            {filteredDishes.map((dish) => (
               <div key={dish._id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div className="flex items-center gap-4">
                   {dish.image?.url && (
@@ -528,8 +552,17 @@ const DishesManagement = () => {
           </div>
         ) : (
           <div className="text-center py-8">
-            <p className="text-muted-foreground">لا توجد أطباق حالياً</p>
-            <p className="text-sm text-muted-foreground">ابدأ بإضافة طبق جديد</p>
+            {searchTerm || categoryFilter !== "all" ? (
+              <>
+                <p className="text-muted-foreground">لا توجد نتائج للبحث</p>
+                <p className="text-sm text-muted-foreground">جرب بحث آخر أو قم بإزالة الفلاتر</p>
+              </>
+            ) : (
+              <>
+                <p className="text-muted-foreground">لا توجد أطباق حالياً</p>
+                <p className="text-sm text-muted-foreground">ابدأ بإضافة طبق جديد</p>
+              </>
+            )}
           </div>
         )}
       </CardContent>

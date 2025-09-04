@@ -63,12 +63,29 @@ const OrdersManagement = () => {
     
     // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(order =>
-        order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.customer.phone.includes(searchTerm) ||
-        order.items.some(item => item.dish.name.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
+      filtered = filtered.filter(order => {
+        const searchLower = searchTerm.toLowerCase();
+        
+        // Search in order ID
+        if (order._id.toLowerCase().includes(searchLower)) return true;
+        
+        // Search in customer info
+        if (order.customer.name.toLowerCase().includes(searchLower)) return true;
+        if (order.customer.phone.includes(searchTerm)) return true;
+        
+        // Search in order items (safely)
+        return order.items.some(item => {
+          // Check if dish is populated with name property
+          if (item.dish && typeof item.dish === 'object' && 'name' in item.dish) {
+            return item.dish.name.toLowerCase().includes(searchLower);
+          }
+          // Fallback to item name if dish is not populated
+          if (item.name) {
+            return item.name.toLowerCase().includes(searchLower);
+          }
+          return false;
+        });
+      });
     }
     
     // Filter by status
