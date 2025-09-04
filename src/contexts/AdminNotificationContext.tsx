@@ -26,7 +26,7 @@ export const AdminNotificationProvider: React.FC<AdminNotificationProviderProps>
   };
 
   const playNotificationSound = () => {
-    const audio = new Audio('/src/assets/new-notification-021-370045.mp3');
+    const audio = new Audio('/new-notification-021-370045.mp3');
     audio.play().catch((error) => console.error('Failed to play notification sound:', error));
   };
 

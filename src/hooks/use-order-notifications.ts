@@ -13,7 +13,7 @@ export const useOrderNotifications = () => {
     if (pendingOrdersCount > previousCount && previousCount !== 0) {
       // Play notification sound
       try {
-        const audio = new Audio('/src/assets/new-notification-021-370045.mp3');
+        const audio = new Audio('/new-notification-021-370045.mp3');
         audio.volume = 0.3;
         audio.play().catch(console.error);
       } catch (error) {
