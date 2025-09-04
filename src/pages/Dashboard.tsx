@@ -282,15 +282,6 @@ const Dashboard = () => {
                                 <Eye className="h-3 w-3 ml-1" />
                                 عرض
                               </Button>
-                              {order.status === "delivered" && (
-                                <Button 
-                                  size="sm" 
-                                  variant="default"
-                                  onClick={() => handleReorder(order)}
-                                >
-                                  إعادة الطلب
-                                </Button>
-                              )}
                             </div>
                           </div>
                         </div>
