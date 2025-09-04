@@ -26,8 +26,14 @@ export const AdminNotificationProvider: React.FC<AdminNotificationProviderProps>
   };
 
   const playNotificationSound = () => {
-    const audio = new Audio('/new-notification-021-370045.mp3');
-    audio.play().catch((error) => console.error('Failed to play notification sound:', error));
+    const audio = new Audio('/assets/new-notification-021-370045.mp3');
+    audio.play().catch((error) => {
+      console.error('Failed to play notification sound:', error);
+      // محاولة ثانية باستخدام مسار بديل
+      const fallbackAudio = new Audio(new URL('/assets/new-notification-021-370045.mp3', window.location.origin));
+      fallbackAudio.volume = 0.3;
+      fallbackAudio.play().catch(console.error);
+    });
   };
 
   const refreshNotifications = async () => {
