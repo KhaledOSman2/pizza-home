@@ -19,15 +19,36 @@ export const AdminNotificationProvider: React.FC<AdminNotificationProviderProps>
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
+  const notifyOrderTableUpdate = () => {
+    console.log('notifyOrderTableUpdate: Event dispatched');
+    const event = new CustomEvent('updateOrderTable');
+    window.dispatchEvent(event);
+  };
+
+  const playNotificationSound = () => {
+    const audio = new Audio('/src/assets/new-notification-021-370045.mp3');
+    audio.play().catch((error) => console.error('Failed to play notification sound:', error));
+  };
+
   const refreshNotifications = async () => {
     if (!user || user.role !== 'admin') return;
-    
+
     try {
       setIsLoading(true);
       const response = await apiService.getUserOrders(); // For admin, this returns all orders
       const orders = response.orders || [];
       const pendingCount = orders.filter(order => order.status === 'pending').length;
+
+      if (pendingCount > pendingOrdersCount) {
+        playNotificationSound(); // تشغيل الصوت عند وجود طلب جديد
+      }
+
       setPendingOrdersCount(pendingCount);
+
+      console.log('refreshNotifications: Pending orders count updated');
+
+      // Notify order table to update
+      notifyOrderTableUpdate();
     } catch (error) {
       console.error('Failed to fetch pending orders:', error);
     } finally {

@@ -13,8 +13,7 @@ export const useOrderNotifications = () => {
     if (pendingOrdersCount > previousCount && previousCount !== 0) {
       // Play notification sound
       try {
-        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmAaChOD0fPTfykGKYDJ8t2MVA0'
-        );
+        const audio = new Audio('/src/assets/new-notification-021-370045.mp3');
         audio.volume = 0.3;
         audio.play().catch(console.error);
       } catch (error) {
@@ -25,7 +24,7 @@ export const useOrderNotifications = () => {
       toast({
         title: "طلب جديد! 🔔",
         description: `يوجد ${pendingOrdersCount} طلبات في الانتظار`,
-        duration: 5000,
+        duration: 20000,
         className: "bg-green-50 border-green-200",
       });
     }

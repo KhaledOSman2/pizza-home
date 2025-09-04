@@ -210,6 +210,31 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
 
   const stats = getOrderStats();
 
+  useEffect(() => {
+    const handleUpdateOrderTable = async () => {
+      console.log('handleUpdateOrderTable: Event received');
+      setIsLoading(true);
+      try {
+        const response = await apiService.getUserOrders();
+        console.log('handleUpdateOrderTable: Orders fetched', response.orders);
+        const sortedOrders = (response.orders || []).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setOrders(sortedOrders);
+        setFilteredOrders(sortedOrders);
+      } catch (error) {
+        console.error('handleUpdateOrderTable: Failed to fetch orders', error);
+        toast({ title: "Error", description: "Failed to fetch orders." });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    window.addEventListener('updateOrderTable', handleUpdateOrderTable);
+
+    return () => {
+      window.removeEventListener('updateOrderTable', handleUpdateOrderTable);
+    };
+  }, []);
+
   return (
     <Card>
       <CardHeader>
