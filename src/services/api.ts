@@ -3,6 +3,13 @@ const API_BASE_URL = process.env.NODE_ENV === 'production'
   ? 'https://spectacular-mouse-pizaahome-ee337475.koyeb.app/api'  // عنوان Koyeb الخاص بك
   : '/api'; // يستخدم البروكسي من vite.config.ts في بيئة التطوير
 
+const DEFAULT_OPTIONS = {
+  credentials: 'include' as RequestCredentials,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+};
+
 interface ApiResponse<T = any> {
   success?: boolean;
   user?: T;

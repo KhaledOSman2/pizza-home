@@ -33,7 +33,10 @@ if (process.env.NODE_ENV !== 'production') {
 const allowedOrigins = [
   process.env.CLIENT_URL || 'http://localhost:8080',
   'https://pizza-home-nvpx33k6f-khaledosman2s-projects.vercel.app',
-  'https://pizza-home.vercel.app'
+  'https://pizza-home.vercel.app',
+  'https://pizza-home-qapw5c9hb-khaledosman2s-projects.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5173'
 ];
 app.use(
   cors({
