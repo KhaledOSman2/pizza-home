@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { createOrderTimestamp, validateAndCorrectDate } = require('../utils/dateHelpers');
+const { createTimestamp, validateTimestamp } = require('../middleware/timestampOverride');
 
 const orderItemSchema = new mongoose.Schema(
   {
@@ -35,33 +36,45 @@ const orderSchema = new mongoose.Schema(
         enum: ['pending', 'preparing', 'on_the_way', 'delivered', 'cancelled'],
         required: true
       },
-      timestamp: { type: Date, default: Date.now },
+      timestamp: { type: Date, default: createTimestamp },
       updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       note: String
     }],
     notes: String,
     paymentMethod: { type: String, enum: ['cod', 'card'], default: 'cod' },
+    // Override default timestamps with our controlled timing
+    createdAt: { type: Date, default: createTimestamp },
+    updatedAt: { type: Date, default: createTimestamp }
   },
-  { timestamps: true }
+  { 
+    timestamps: false // Disable automatic timestamps to use our custom ones
+  }
 );
 
 // Generate unique numeric order number and initialize status history before saving
 orderSchema.pre('save', async function (next) {
-  const now = createOrderTimestamp();
+  const now = createTimestamp(); // Use our controlled timestamp
   
-  // Ensure createdAt is not in the future for new orders
+  // Force correct timestamps for all orders
   if (this.isNew) {
-    // Use our timezone-aware timestamp function
-    this.createdAt = validateAndCorrectDate(this.createdAt || now);
+    // Always use our controlled timestamp, never trust external sources
+    this.createdAt = now;
     this.updatedAt = now;
     
-    console.log('Order timestamp validation:', {
-      orderId: this._id,
-      originalCreatedAt: this.createdAt,
-      correctedCreatedAt: this.createdAt,
-      serverTime: now,
-      environment: process.env.NODE_ENV || 'development'
+    console.log('🕐 Order Creation Timestamp Control:', {
+      orderId: this._id?.toString().slice(-6) || 'new',
+      createdAt: this.createdAt.toISOString(),
+      updatedAt: this.updatedAt.toISOString(),
+      environment: process.env.NODE_ENV || 'development',
+      serverTime: new Date().toISOString(),
+      cairoTime: now.toISOString(),
+      customer: this.customer?.name
     });
+  } else {
+    // For updates, only update the updatedAt field
+    this.updatedAt = now;
+    // Validate existing createdAt
+    this.createdAt = validateTimestamp(this.createdAt);
   }
   
   if (!this.orderNumber) {
@@ -85,7 +98,7 @@ orderSchema.pre('save', async function (next) {
   if (this.isNew && this.statusHistory.length === 0) {
     this.statusHistory.push({
       status: this.status,
-      timestamp: now, // Use timezone-aware server time
+      timestamp: now, // Use our controlled timestamp
       note: 'طلب جديد'
     });
   }

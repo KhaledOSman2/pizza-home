@@ -4,6 +4,7 @@ const Dish = require('../models/Dish');
 const ApiError = require('../utils/ApiError');
 const catchAsync = require('../utils/catchAsync');
 const { createOrderTimestamp } = require('../utils/dateHelpers');
+const { createTimestamp } = require('../middleware/timestampOverride');
 
 const allowedStatuses = ['pending', 'preparing', 'on_the_way', 'delivered', 'cancelled'];
 
@@ -33,7 +34,9 @@ exports.create = catchAsync(async (req, res, next) => {
   const deliveryFee = 0;
   const total = subtotal + deliveryFee;
 
-  // Ensure we use timezone-aware server time for order creation
+  // Use absolute timestamp control - no external dependencies
+  const now = createTimestamp(); // Our controlled Cairo time
+  
   const orderData = {
     user: req.user ? req.user._id : undefined,
     customer,
@@ -42,18 +45,19 @@ exports.create = catchAsync(async (req, res, next) => {
     deliveryFee,
     total,
     status: 'pending',
+    // Force our controlled timestamps
+    createdAt: now,
+    updatedAt: now
   };
 
-  // Explicitly set timestamps to timezone-aware server time
-  const now = createOrderTimestamp();
-  orderData.createdAt = now;
-  orderData.updatedAt = now;
-
-  console.log('Creating order with timestamp:', {
-    timestamp: now.toISOString(),
+  console.log('🚀 Creating order with CONTROLLED timestamp:', {
+    controlledTimestamp: now.toISOString(),
+    systemTime: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     timezone: process.env.TZ || 'UTC',
-    customer: customer.name
+    customer: customer.name,
+    userAgent: req.headers['user-agent']?.substring(0, 50),
+    clientIP: req.ip || req.connection.remoteAddress
   });
 
   const order = await Order.create(orderData);
