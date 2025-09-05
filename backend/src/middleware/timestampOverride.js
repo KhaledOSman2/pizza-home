@@ -6,14 +6,26 @@
 const mongoose = require('mongoose');
 
 /**
- * Get Cairo time with proper timezone handling
+ * Get Cairo time with proper timezone handling including daylight saving
  */
 const getCairoTime = () => {
-  // Force Cairo timezone calculation
+  // Use proper Cairo timezone with automatic DST handling
   const now = new Date();
-  const cairoOffset = 2 * 60; // Cairo is UTC+2 (in minutes)
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  const cairoTime = new Date(utc + (cairoOffset * 60000));
+  
+  // Create date in Cairo timezone using toLocaleString
+  const cairoTimeString = now.toLocaleString("en-CA", { 
+    timeZone: "Africa/Cairo",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  // Parse the Cairo time string back to Date object
+  const cairoTime = new Date(cairoTimeString.replace(', ', 'T'));
   
   return cairoTime;
 };
@@ -71,9 +83,30 @@ const setupTimestampOverride = () => {
 
 /**
  * Manual timestamp creation for explicit control
+ * Simple and reliable approach
  */
 const createTimestamp = () => {
-  return getCairoTime();
+  try {
+    // Get current UTC time
+    const now = new Date();
+    
+    // Egypt is currently UTC+2 (no DST since 2014)
+    // Simply subtract 1 hour from the server time to get correct Cairo time
+    const cairoTime = new Date(now.getTime() - (60 * 60 * 1000)); // Subtract 1 hour
+    
+    console.log('🕐 Simple Timestamp Control:', {
+      serverUTC: now.toISOString(),
+      correctedCairo: cairoTime.toISOString(),
+      adjustment: '-1 hour',
+      environment: process.env.NODE_ENV || 'development'
+    });
+    
+    return cairoTime;
+    
+  } catch (error) {
+    console.error('Timestamp creation error:', error);
+    return new Date();
+  }
 };
 
 /**
