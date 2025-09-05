@@ -6,54 +6,32 @@ import { Link, useParams } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { apiService, Dish, Category } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import { useDishes, useCategory } from "@/hooks/useQueries";
 import { useCart } from "@/contexts/CartContext";
 
 const CategoryPage = () => {
   const { id } = useParams<{ id: string }>();
-  const [dishes, setDishes] = useState<Dish[]>([]);
-  const [category, setCategory] = useState<Category | null>(null);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { addToCart } = useCart();
+  
+  // استخدام React Query مع caching للأطباق والقسم
+  const { data: dishesResponse, isLoading: dishesLoading, error: dishesError } = useDishes(id);
+  const { data: categoryResponse, isLoading: categoryLoading, error: categoryError } = useCategory(id || '');
+  
+  const dishes = dishesResponse?.dishes || [];
+  const category = categoryResponse?.category || (dishes.length > 0 ? dishes[0].category : null);
+  const loading = dishesLoading || categoryLoading;
 
+  // عرض خطأ إذا فشل في تحميل البيانات
   useEffect(() => {
-    if (id) {
-      fetchCategoryData();
-    }
-  }, [id]);
-
-  const fetchCategoryData = async () => {
-    try {
-      setLoading(true);
-      // Fetch dishes for this category using the slug
-      const dishesResponse = await apiService.getDishes(id);
-      const dishesData = dishesResponse as any; // The API returns the data directly
-      setDishes(dishesData.dishes || []);
-      
-      // If we have dishes, get the category info from the first dish
-      if (dishesData.dishes && dishesData.dishes.length > 0) {
-        setCategory(dishesData.dishes[0].category);
-      } else {
-        // Try to fetch category directly if no dishes found
-        try {
-          const categoryResponse = await apiService.getCategory(id);
-          const categoryData = categoryResponse as any;
-          setCategory(categoryData.category);
-        } catch (catError) {
-          console.log('Category not found:', catError);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching category data:', error);
+    if (dishesError || categoryError) {
       toast({
         variant: "destructive",
         title: "خطأ",
         description: "حدث خطأ في تحميل بيانات القسم. يرجى المحاولة مرة أخرى.",
       });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [dishesError, categoryError, toast]);
 
   const handleAddToCart = (dish: Dish) => {
     addToCart({

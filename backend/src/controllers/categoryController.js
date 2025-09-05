@@ -12,7 +12,20 @@ exports.list = catchAsync(async (req, res) => {
 
 exports.getOne = catchAsync(async (req, res, next) => {
   const idOrSlug = req.params.id;
-  const category = await Category.findOne({ $or: [{ _id: idOrSlug }, { slug: idOrSlug }] });
+  
+  // Build query based on whether it's a valid ObjectId or slug
+  const mongoose = require('mongoose');
+  let query;
+  
+  if (mongoose.isValidObjectId(idOrSlug)) {
+    // If it's a valid ObjectId, search by both _id and slug
+    query = { $or: [{ _id: idOrSlug }, { slug: idOrSlug }] };
+  } else {
+    // If it's not a valid ObjectId, search only by slug
+    query = { slug: idOrSlug };
+  }
+  
+  const category = await Category.findOne(query);
   if (!category) return next(new ApiError('Category not found', 404));
   res.status(200).json({ category });
 });

@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOrders } from "@/hooks/useQueries";
 import { useEffect, useState } from "react";
 import { apiService, Order } from "@/services/api";
 import { toast } from "@/hooks/use-toast";
@@ -29,8 +30,11 @@ import OrderTrackingDialog from "@/components/admin/OrderTrackingDialog";
 const Dashboard = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(true);
+  
+  // استخدام React Query لجلب الطلبات مع caching
+  const { data: ordersResponse, isLoading: ordersLoading, error: ordersError } = useOrders();
+  const orders = ordersResponse?.orders || [];
+  
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
   const [trackingOrder, setTrackingOrder] = useState<Order | null>(null);
@@ -43,34 +47,16 @@ const Dashboard = () => {
     }
   }, [isAuthenticated, navigate]);
 
-  // Fetch user orders
+  // عرض خطأ إذا فشل في تحميل الطلبات
   useEffect(() => {
-    const fetchOrders = async () => {
-      if (!isAuthenticated || !user) return;
-      
-      try {
-        setOrdersLoading(true);
-        const response = await apiService.getUserOrders();
-        if (response.orders) {
-          setOrders(response.orders);
-        } else if (Array.isArray(response)) {
-          // Fallback in case the response format changes
-          setOrders(response);
-        }
-      } catch (error) {
-        console.error('Failed to fetch orders:', error);
-        toast({
-          title: "خطأ في تحميل الطلبات",
-          description: "فشل في تحميل قائمة الطلبات",
-          variant: "destructive",
-        });
-      } finally {
-        setOrdersLoading(false);
-      }
-    };
-
-    fetchOrders();
-  }, [isAuthenticated, user]);
+    if (ordersError) {
+      toast({
+        title: "خطأ في تحميل الطلبات",
+        description: "فشل في تحميل قائمة الطلبات",
+        variant: "destructive",
+      });
+    }
+  }, [ordersError]);
 
   const handleLogout = async () => {
     await logout();

@@ -5,32 +5,25 @@ import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { apiService, Category } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import { useCategories } from "@/hooks/useQueries";
 
 const AllCategories = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  
+  // استخدام React Query مع caching
+  const { data: categoriesResponse, isLoading: loading, error } = useCategories();
+  const categories = categoriesResponse?.categories || [];
 
+  // عرض خطأ إذا فشل في تحميل الأقسام
   useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
-      const response = await apiService.getCategories();
-      setCategories(response.categories || []);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
+    if (error) {
       toast({
         variant: "destructive",
         title: "خطأ",
         description: "حدث خطأ في تحميل الأقسام. يرجى المحاولة مرة أخرى.",
       });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [error, toast]);
   return (
     <div className="min-h-screen bg-background">
       <Header />

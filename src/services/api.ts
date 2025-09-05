@@ -100,7 +100,12 @@ interface Dish {
 interface Order {
   _id: string;
   orderNumber?: string; // New numeric order number field
-  user?: string;
+  user?: {
+    _id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
   customer: {
     name: string;
     phone: string;
@@ -200,9 +205,14 @@ class ApiService {
     return this.makeRequest<{ results: number; orders: Order[] }>('/orders');
   }
 
-  async getUserOrders(userId?: string): Promise<{ results: number; orders: Order[] }> {
+  async getUserOrders(userId?: string): Promise<{ results: number; orders: Order[]; userRole?: string }> {
     const endpoint = userId ? `/users/${userId}/orders` : '/orders';
-    return this.makeRequest<{ results: number; orders: Order[] }>(endpoint);
+    return this.makeRequest<{ results: number; orders: Order[]; userRole?: string }>(endpoint);
+  }
+
+  // دالة جديدة للأدمن لعرض جميع الطلبات
+  async getAllOrdersAdmin(): Promise<{ results: number; orders: Order[]; userRole?: string }> {
+    return this.makeRequest<{ results: number; orders: Order[]; userRole?: string }>('/orders/admin/all');
   }
 
   async getOrder(orderId: string): Promise<{ order: Order }> {
@@ -329,10 +339,6 @@ class ApiService {
     return this.makeRequest<{ user: User }>(`/users/${userId}`);
   }
 
-  async getUserOrders(userId?: string): Promise<{ results: number; orders: Order[] }> {
-    const endpoint = userId ? `/users/${userId}/orders` : '/orders';
-    return this.makeRequest<{ results: number; orders: Order[] }>(endpoint);
-  }
 
   async updateUser(userId: string, userData: Partial<User>): Promise<{ user: User }> {
     return this.makeRequest<{ user: User }>(`/users/${userId}`, {

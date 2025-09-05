@@ -1,6 +1,9 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { apiService, User } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
+import { queryKeys } from '@/lib/queryClient';
+import { useCurrentUser } from '@/hooks/useQueries';
 
 interface AuthContextType {
   user: User | null;
@@ -18,38 +21,20 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
+  const queryClient = useQueryClient();
+  const { data: userResponse, isLoading, error } = useCurrentUser();
+  
+  const user = userResponse?.user || null;
   const isAuthenticated = !!user;
-
-  // Check if user is logged in on app start
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiService.getCurrentUser();
-      if (response.user) {
-        setUser(response.user);
-      }
-    } catch (error) {
-      // User is not authenticated
-      setUser(null);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const login = async (email: string, password: string): Promise<void> => {
     try {
-      setIsLoading(true);
       const response = await apiService.login({ email, password });
       
       if (response.user) {
-        setUser(response.user);
+        // تحديث الـ cache مع بيانات المستخدم الجديدة
+        queryClient.setQueryData(queryKeys.currentUser, response);
+        
         toast({
           title: "تم تسجيل الدخول بنجاح",
           description: `مرحباً بعودتك ${response.user.name}`,
@@ -63,8 +48,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         variant: "destructive",
       });
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -75,11 +58,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     phone?: string; 
   }): Promise<void> => {
     try {
-      setIsLoading(true);
       const response = await apiService.signup(userData);
       
       if (response.user) {
-        setUser(response.user);
+        // تحديث الـ cache مع بيانات المستخدم الجديدة
+        queryClient.setQueryData(queryKeys.currentUser, response);
+        
         toast({
           title: "تم إنشاء الحساب بنجاح",
           description: `مرحباً بك ${response.user.name}`,
@@ -93,22 +77,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
         variant: "destructive",
       });
       throw error;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const logout = async (): Promise<void> => {
     try {
       await apiService.logout();
-      setUser(null);
+      
+      // مسح جميع البيانات من الـ cache عند تسجيل الخروج
+      queryClient.clear();
+      
       toast({
         title: "تم تسجيل الخروج",
         description: "نراك قريباً!",
       });
     } catch (error) {
-      // Even if logout fails on server, clear local state
-      setUser(null);
+      // حتى لو فشل تسجيل الخروج على الخادم، امسح البيانات المحلية
+      queryClient.clear();
+      
       toast({
         title: "تم تسجيل الخروج",
         description: "نراك قريباً!",
@@ -132,10 +118,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
+};

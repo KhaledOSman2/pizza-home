@@ -8,38 +8,28 @@ import { useState, useEffect } from "react";
 import { apiService, Dish } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
+import { useDish } from "@/hooks/useQueries";
 
 const DishDetails = () => {
   const { id } = useParams<{ id: string }>();
-  const [dish, setDish] = useState<Dish | null>(null);
-  const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const { toast } = useToast();
   const { addToCart } = useCart();
+  
+  // استخدام React Query مع caching
+  const { data: dishResponse, isLoading: loading, error } = useDish(id || '');
+  const dish = dishResponse?.dish || null;
 
+  // عرض خطأ إذا فشل في تحميل الطبق
   useEffect(() => {
-    if (id) {
-      fetchDish();
-    }
-  }, [id]);
-
-  const fetchDish = async () => {
-    try {
-      setLoading(true);
-      const response = await apiService.getDish(id!);
-      const dishData = response as any; // The API returns the data directly
-      setDish(dishData.dish);
-    } catch (error) {
-      console.error('Error fetching dish:', error);
+    if (error) {
       toast({
         variant: "destructive",
         title: "خطأ",
         description: "حدث خطأ في تحميل بيانات الطبق. يرجى المحاولة مرة أخرى.",
       });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [error, toast]);
 
   if (loading) {
     return (

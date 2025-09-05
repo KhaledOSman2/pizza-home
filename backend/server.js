@@ -46,15 +46,35 @@ app.use(helmet({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX) || 100, // limit each IP to 100 requests per windowMs
+  max: parseInt(process.env.RATE_LIMIT_MAX) || 500, // زيادة الحد إلى 500 طلب لكل 15 دقيقة
   message: {
     error: 'Too many requests from this IP, please try again later.'
   },
   standardHeaders: true,
   legacyHeaders: false,
+  // تخطي Rate Limiting في بيئة التطوير
+  skip: (req) => process.env.NODE_ENV === 'development',
 });
 
-app.use(limiter);
+// Apply rate limiting only to non-admin routes or with higher limits for admins
+app.use('/api/auth', limiter);
+app.use('/api/users', limiter);
+app.use('/api/categories', limiter);
+app.use('/api/dishes', limiter);
+
+// More lenient rate limiting for orders (used frequently by admin)
+const ordersLimiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+  max: parseInt(process.env.RATE_LIMIT_MAX) || 1000, // حد أعلى للطلبات
+  message: {
+    error: 'Too many requests from this IP, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => process.env.NODE_ENV === 'development',
+});
+
+app.use('/api/orders', ordersLimiter);
 
 // CORS configuration
 app.use(cors({

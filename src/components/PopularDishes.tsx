@@ -5,36 +5,29 @@ import { useState, useEffect } from "react";
 import { apiService, Dish } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { useCart } from "@/contexts/CartContext";
+import { useDishes } from "@/hooks/useQueries";
 import { Link } from "react-router-dom";
 
 const PopularDishes = () => {
-  const [dishes, setDishes] = useState<Dish[]>([]);
-  const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const { addToCart } = useCart();
+  
+  // استخدام React Query مع caching
+  const { data: dishesResponse, isLoading: loading, error } = useDishes();
+  
+  // الحصول على أول 4 أطباق كـ"أطباق شائعة"
+  const dishes = (dishesResponse?.dishes || []).slice(0, 4);
 
+  // عرض خطأ إذا فشل في تحميل الأطباق
   useEffect(() => {
-    fetchPopularDishes();
-  }, []);
-
-  const fetchPopularDishes = async () => {
-    try {
-      setLoading(true);
-      const response = await apiService.getDishes();
-      const dishesData = response as any; // The API returns the data directly
-      // Get the first 4 dishes as popular dishes
-      setDishes((dishesData.dishes || []).slice(0, 4));
-    } catch (error) {
-      console.error('Error fetching popular dishes:', error);
+    if (error) {
       toast({
         variant: "destructive",
         title: "خطأ",
         description: "حدث خطأ في تحميل الأطباق الشعبية.",
       });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [error, toast]);
 
   const handleAddToCart = (dish: Dish) => {
     addToCart({

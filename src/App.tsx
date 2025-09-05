@@ -19,8 +19,8 @@ import Dashboard from "./pages/Dashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 import ForgotPassword from "./pages/ForgotPassword";
-
-const queryClient = new QueryClient();
+import { queryClient } from "./lib/queryClient";
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -54,6 +54,8 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
+            {/* React Query Devtools - فقط في بيئة التطوير */}
+            <ReactQueryDevtools initialIsOpen={false} />
           </TooltipProvider>
         </CartProvider>
       </AdminNotificationProvider>

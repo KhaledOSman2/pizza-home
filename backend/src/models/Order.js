@@ -46,6 +46,17 @@ const orderSchema = new mongoose.Schema(
 
 // Generate unique numeric order number and initialize status history before saving
 orderSchema.pre('save', async function (next) {
+  const now = new Date();
+  
+  // Ensure createdAt is not in the future for new orders
+  if (this.isNew) {
+    // Force createdAt to current server time if it's in the future
+    if (this.createdAt > now) {
+      console.warn(`Order created with future date: ${this.createdAt}, setting to current time: ${now}`);
+      this.createdAt = now;
+    }
+  }
+  
   if (!this.orderNumber) {
     // Generate a 6-digit order number
     let orderNumber;
@@ -67,7 +78,7 @@ orderSchema.pre('save', async function (next) {
   if (this.isNew && this.statusHistory.length === 0) {
     this.statusHistory.push({
       status: this.status,
-      timestamp: new Date(),
+      timestamp: now, // Use server time, not potentially incorrect client time
       note: 'طلب جديد'
     });
   }

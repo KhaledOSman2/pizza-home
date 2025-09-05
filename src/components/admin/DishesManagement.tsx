@@ -12,12 +12,18 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Plus, Edit, Trash2, Upload, Loader2, Star, Clock, Users, Search } from "lucide-react";
 import { apiService, Dish, Category } from "@/services/api";
 import { toast } from "@/hooks/use-toast";
+import { useDishes, useCategories } from "@/hooks/useQueries";
 
 const DishesManagement = () => {
-  const [dishes, setDishes] = useState<Dish[]>([]);
+  // استخدام React Query مع caching
+  const { data: dishesResponse, isLoading: dishesLoading, error: dishesError, refetch: refetchDishes } = useDishes();
+  const { data: categoriesResponse, isLoading: categoriesLoading, error: categoriesError } = useCategories();
+  
+  const dishes = dishesResponse?.dishes || [];
+  const categories = categoriesResponse?.categories || [];
+  const isLoading = dishesLoading || categoriesLoading;
+  
   const [filteredDishes, setFilteredDishes] = useState<Dish[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingDish, setEditingDish] = useState<Dish | null>(null);
@@ -38,37 +44,16 @@ const DishesManagement = () => {
     image: null as File | null
   });
 
-  // Fetch dishes and categories
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [dishesRes, categoriesRes] = await Promise.all([
-        apiService.getAllDishes(), // Use getAllDishes to include unavailable dishes for admin
-        apiService.getCategories()
-      ]);
-      
-      if (dishesRes.dishes) {
-        setDishes(dishesRes.dishes);
-        setFilteredDishes(dishesRes.dishes);
-      }
-      if (categoriesRes.categories) {
-        setCategories(categoriesRes.categories);
-      }
-    } catch (error) {
-      console.error('Failed to fetch data:', error);
+  // عرض خطأ إذا فشل في تحميل البيانات
+  useEffect(() => {
+    if (dishesError || categoriesError) {
       toast({
         title: "خطأ في تحميل البيانات",
         description: "فشل في تحميل الأطباق والأصناف",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
+  }, [dishesError, categoriesError]);
 
   // Filter dishes based on search and category
   useEffect(() => {
@@ -190,7 +175,8 @@ const DishesManagement = () => {
           description: `تم إضافة طبق "${formData.name}" بنجاح`,
         });
         
-        setDishes(prev => [response.dish, ...prev]);
+        // إعادة تحميل البيانات من cache
+        refetchDishes();
         setIsCreateOpen(false);
         resetForm();
       }
@@ -237,9 +223,8 @@ const DishesManagement = () => {
           description: `تم تحديث طبق "${formData.name}" بنجاح`,
         });
         
-        setDishes(prev => prev.map(dish => 
-          dish._id === editingDish._id ? response.dish : dish
-        ));
+        // إعادة تحميل البيانات من cache
+        refetchDishes();
         setIsEditOpen(false);
         setEditingDish(null);
         resetForm();
@@ -265,7 +250,8 @@ const DishesManagement = () => {
         description: `تم حذف طبق "${dish.name}" بنجاح`,
       });
       
-      setDishes(prev => prev.filter(d => d._id !== dish._id));
+      // إعادة تحميل البيانات من cache
+      refetchDishes();
     } catch (error) {
       console.error('Failed to delete dish:', error);
       toast({

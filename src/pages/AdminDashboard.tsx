@@ -72,7 +72,7 @@ const AdminDashboard = () => {
         
         // Fetch data in parallel
         const [ordersRes, categoriesRes, dishesRes] = await Promise.all([
-          apiService.getUserOrders(), // For admin, this returns all orders
+          apiService.getAllOrdersAdmin(), // استخدام دالة الأدمن المخصصة
           apiService.getCategories(),
           apiService.getDishes()
         ]);
@@ -256,7 +256,7 @@ const AdminDashboard = () => {
             </TabsList>
 
             <TabsContent value="orders">
-              <OrdersManagement onOrderStatusChange={refreshNotifications} />
+              <OrdersManagement onOrderStatusChange={() => refreshNotifications(true)} />
             </TabsContent>
 
             <TabsContent value="categories">

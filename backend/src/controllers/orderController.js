@@ -32,7 +32,8 @@ exports.create = catchAsync(async (req, res, next) => {
   const deliveryFee = 0;
   const total = subtotal + deliveryFee;
 
-  const order = await Order.create({
+  // Ensure we use server time for order creation
+  const orderData = {
     user: req.user ? req.user._id : undefined,
     customer,
     items: normalizedItems,
@@ -40,26 +41,77 @@ exports.create = catchAsync(async (req, res, next) => {
     deliveryFee,
     total,
     status: 'pending',
-  });
+  };
+
+  // Explicitly set timestamps to current server time
+  const now = new Date();
+  orderData.createdAt = now;
+  orderData.updatedAt = now;
+
+  const order = await Order.create(orderData);
 
   res.status(201).json({ order });
 });
 
 exports.list = catchAsync(async (req, res) => {
-  const isAdmin = req.user.role === 'admin';
   const filter = {};
-  if (!isAdmin) filter.user = req.user._id;
-  if (req.query.status && allowedStatuses.includes(req.query.status)) filter.status = req.query.status;
-  const orders = await Order.find(filter).sort({ createdAt: -1 });
-  res.status(200).json({ results: orders.length, orders });
+  
+  // جميع المستخدمين (بما في ذلك الأدمن) يرون طلباتهم الشخصية فقط في هذا الـ endpoint
+  filter.user = req.user._id;
+  
+  // فلترة حسب الحالة إذا تم تمريرها
+  if (req.query.status && allowedStatuses.includes(req.query.status)) {
+    filter.status = req.query.status;
+  }
+  
+  const orders = await Order.find(filter)
+    .populate('user', 'name email role')
+    .populate('items.dish', 'name price')
+    .sort({ createdAt: -1 });
+  
+  res.status(200).json({ 
+    results: orders.length, 
+    orders,
+    userRole: req.user.role 
+  });
+});
+
+// دالة خاصة للأدمن لعرض جميع الطلبات
+exports.listAllForAdmin = catchAsync(async (req, res) => {
+  const filter = {};
+  
+  // فلترة حسب الحالة إذا تم تمريرها
+  if (req.query.status && allowedStatuses.includes(req.query.status)) {
+    filter.status = req.query.status;
+  }
+  
+  const orders = await Order.find(filter)
+    .populate('user', 'name email role')
+    .populate('items.dish', 'name price')
+    .sort({ createdAt: -1 });
+  
+  res.status(200).json({ 
+    results: orders.length, 
+    orders,
+    userRole: req.user.role 
+  });
 });
 
 exports.getOne = catchAsync(async (req, res, next) => {
-  const order = await Order.findById(req.params.id);
+  const order = await Order.findById(req.params.id)
+    .populate('user', 'name email role')
+    .populate('items.dish', 'name price');
+    
   if (!order) return next(new ApiError('Order not found', 404));
+  
   const isAdmin = req.user.role === 'admin';
-  const isOwner = order.user && order.user.toString() === req.user.id;
-  if (!isAdmin && !isOwner) return next(new ApiError('Forbidden', 403));
+  const isOwner = order.user && order.user._id.toString() === req.user._id.toString();
+  
+  // المستخدم العادي يمكنه رؤية طلباته فقط، الأدمن يرى جميع الطلبات
+  if (!isAdmin && !isOwner) {
+    return next(new ApiError('غير مصرح لك بعرض هذا الطلب', 403));
+  }
+  
   res.status(200).json({ order });
 });
 

@@ -18,10 +18,12 @@ import {
   Filter,
   Download,
   Search,
-  History
+  History,
+  RefreshCw
 } from "lucide-react";
 import { apiService, Order } from "@/services/api";
 import { toast } from "@/hooks/use-toast";
+import { useAdminOrders, useUpdateOrderStatus } from "@/hooks/useQueries";
 import OrderTrackingDialog from "./OrderTrackingDialog";
 
 interface OrdersManagementProps {
@@ -29,16 +31,18 @@ interface OrdersManagementProps {
 }
 
 const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) => {
-  const [orders, setOrders] = useState<Order[]>([]);
+  // استخدام React Query لجلب الطلبات مع caching
+  const { data: ordersResponse, isLoading, error, refetch, isFetching } = useAdminOrders();
+  const updateOrderMutation = useUpdateOrderStatus();
+  
+  const orders = ordersResponse?.orders || [];
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [orderDetailsOpen, setOrderDetailsOpen] = useState(false);
   const [trackingOrder, setTrackingOrder] = useState<Order | null>(null);
   const [trackingOpen, setTrackingOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState<string | null>(null);
 
   // Check if order is new (within last 24 hours) and has pending status
   const isNewOrder = (order: Order) => {
@@ -48,30 +52,55 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
     return diffInHours <= 24 && order.status === 'pending';
   };
 
-  // Fetch orders
-  const fetchOrders = async () => {
-    try {
-      setIsLoading(true);
-      const response = await apiService.getUserOrders(); // For admin, this returns all orders
-      if (response.orders) {
-        setOrders(response.orders);
-        setFilteredOrders(response.orders);
-      }
-    } catch (error) {
-      console.error('Failed to fetch orders:', error);
+  // عرض خطأ إذا فشل في تحميل الطلبات
+  useEffect(() => {
+    if (error) {
       toast({
         title: "خطأ في تحميل الطلبات",
         description: "فشل في تحميل قائمة الطلبات",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
+  }, [error]);
+
+  // Helper function to detect suspicious future dates
+  const isSuspiciousDate = (dateString: string) => {
+    const orderDate = new Date(dateString);
+    const now = new Date();
+    const diffInMinutes = (orderDate.getTime() - now.getTime()) / (1000 * 60);
+    // Consider dates more than 5 minutes in the future as suspicious
+    return diffInMinutes > 5;
   };
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+  // Enhanced sorting function that handles suspicious dates
+  const sortOrdersChronologically = (ordersArray: Order[]) => {
+    return [...ordersArray].sort((a, b) => {
+      const dateA = new Date(a.createdAt);
+      const dateB = new Date(b.createdAt);
+      const now = new Date();
+      
+      // Check for suspicious future dates
+      const aIsSuspicious = isSuspiciousDate(a.createdAt);
+      const bIsSuspicious = isSuspiciousDate(b.createdAt);
+      
+      // If both are suspicious or both are normal, sort normally
+      if (aIsSuspicious === bIsSuspicious) {
+        return dateB.getTime() - dateA.getTime(); // Newest first
+      }
+      
+      // If only A is suspicious, B should come first
+      if (aIsSuspicious && !bIsSuspicious) {
+        return 1;
+      }
+      
+      // If only B is suspicious, A should come first
+      if (!aIsSuspicious && bIsSuspicious) {
+        return -1;
+      }
+      
+      return dateB.getTime() - dateA.getTime();
+    });
+  };
 
   // Filter orders based on status and search
   useEffect(() => {
@@ -112,7 +141,10 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
       filtered = filtered.filter(order => order.status === statusFilter);
     }
     
-    setFilteredOrders(filtered);
+    // Apply enhanced chronological sorting
+    const sortedFiltered = sortOrdersChronologically(filtered);
+    
+    setFilteredOrders(sortedFiltered);
   }, [orders, statusFilter, searchTerm]);
 
   const getStatusColor = (status: Order["status"]) => {
@@ -150,41 +182,32 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
   };
 
   const handleStatusUpdate = async (orderId: string, newStatus: Order["status"]) => {
-    setIsUpdatingStatus(orderId);
-    try {
-      const response = await apiService.updateOrderStatus(orderId, newStatus);
-      
-      if (response.order) {
-        toast({
-          title: "تم تحديث حالة الطلب",
-          description: `تم تغيير حالة الطلب إلى "${getStatusText(newStatus)}"`,
-        });
-        
-        // Update orders list
-        setOrders(prev => prev.map(order => 
-          order._id === orderId ? response.order : order
-        ));
-        
-        // Update selected order if it's the same
-        if (selectedOrder && selectedOrder._id === orderId) {
-          setSelectedOrder(response.order);
-        }
-        
-        // Trigger notification refresh if callback provided
-        if (onOrderStatusChange) {
-          onOrderStatusChange();
+    // استخدام React Query mutation مع التحديث التلقائي للـ cache
+    updateOrderMutation.mutate(
+      { orderId, status: newStatus },
+      {
+        onSuccess: () => {
+          // Update selected order if it's the same
+          if (selectedOrder && selectedOrder._id === orderId) {
+            setSelectedOrder(prev => prev ? { ...prev, status: newStatus } : null);
+          }
+          
+          // Trigger notification refresh if callback provided
+          if (onOrderStatusChange) {
+            onOrderStatusChange();
+          }
         }
       }
-    } catch (error) {
-      console.error('Failed to update order status:', error);
-      toast({
-        title: "فشل في تحديث حالة الطلب",
-        description: error instanceof Error ? error.message : "حدث خطأ أثناء تحديث حالة الطلب",
-        variant: "destructive",
-      });
-    } finally {
-      setIsUpdatingStatus(null);
-    }
+    );
+  };
+
+  // Manual refresh function
+  const handleManualRefresh = () => {
+    refetch();
+    toast({
+      title: "تم تحديث الطلبات",
+      description: "جاري تحميل أحدث الطلبات...",
+    });
   };
 
   const handleViewOrder = (order: Order) => {
@@ -210,37 +233,22 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
 
   const stats = getOrderStats();
 
-  useEffect(() => {
-    const handleUpdateOrderTable = async () => {
-      console.log('handleUpdateOrderTable: Event received');
-      setIsLoading(true);
-      try {
-        const response = await apiService.getUserOrders();
-        console.log('handleUpdateOrderTable: Orders fetched', response.orders);
-        const sortedOrders = (response.orders || []).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setOrders(sortedOrders);
-        setFilteredOrders(sortedOrders);
-      } catch (error) {
-        console.error('handleUpdateOrderTable: Failed to fetch orders', error);
-        toast({ title: "Error", description: "Failed to fetch orders." });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    window.addEventListener('updateOrderTable', handleUpdateOrderTable);
-
-    return () => {
-      window.removeEventListener('updateOrderTable', handleUpdateOrderTable);
-    };
-  }, []);
-
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>إدارة الطلبات</CardTitle>
           <div className="flex gap-3">
+            <Button
+              onClick={handleManualRefresh}
+              disabled={isFetching}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+              {isFetching ? 'جاري التحديث...' : 'تحديث'}
+            </Button>
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -316,13 +324,18 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
                       {getStatusText(order.status)}
                     </Badge>
                     {isNewOrder(order) && (
-                  <Badge className="bg-green-500 hover:bg-green-600 text-white ml-2 animate-pulse shadow-md font-bold">
+                      <Badge className="bg-green-500 hover:bg-green-600 text-white ml-2 animate-pulse shadow-md font-bold">
                         جديد
+                      </Badge>
+                    )}
+                    {isSuspiciousDate(order.createdAt) && (
+                      <Badge className="bg-orange-500 hover:bg-orange-600 text-white ml-2 shadow-md font-bold" title="تاريخ مشبوه - يبدو أنه في المستقبل">
+                        ⚠️ تاريخ مشبوه
                       </Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-muted-foreground text-sm">
+                    <span className={`text-sm ${isSuspiciousDate(order.createdAt) ? 'text-orange-600 font-medium' : 'text-muted-foreground'}`}>
                       {new Date(order.createdAt).toLocaleDateString('ar-EG', {
                         year: 'numeric',
                         month: 'short',
@@ -330,6 +343,11 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
                         hour: '2-digit',
                         minute: '2-digit'
                       })}
+                      {isSuspiciousDate(order.createdAt) && (
+                        <span className="text-xs text-orange-500 mr-1" title="هذا التاريخ يبدو أنه في المستقبل">
+                          (مشبوه)
+                        </span>
+                      )}
                     </span>
                   </div>
                 </div>
@@ -339,6 +357,11 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">{order.customer.name}</span>
+                      {order.user && (
+                        <Badge variant="outline" className="text-xs">
+                          مستخدم مسجل: {order.user.name}
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <Phone className="h-4 w-4 text-muted-foreground" />
@@ -369,7 +392,7 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
                     <Select 
                       value={order.status} 
                       onValueChange={(value) => handleStatusUpdate(order._id, value as Order["status"])}
-                      disabled={isUpdatingStatus === order._id}
+                                              disabled={updateOrderMutation.isPending}
                     >
                       <SelectTrigger className="w-32 h-8">
                         <SelectValue />
@@ -382,7 +405,7 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
                         <SelectItem value="cancelled">ملغي</SelectItem>
                       </SelectContent>
                     </Select>
-                    {isUpdatingStatus === order._id && (
+                    {updateOrderMutation.isPending && (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     )}
                   </div>
@@ -532,7 +555,7 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
                   <Select 
                     value={selectedOrder.status} 
                     onValueChange={(value) => handleStatusUpdate(selectedOrder._id, value as Order["status"])}
-                    disabled={isUpdatingStatus === selectedOrder._id}
+                    disabled={updateOrderMutation.isPending}
                   >
                     <SelectTrigger className="flex-1">
                       <SelectValue />

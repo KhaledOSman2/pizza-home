@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext';
 
 interface AdminNotificationContextType {
   pendingOrdersCount: number;
-  refreshNotifications: () => Promise<void>;
+  refreshNotifications: (skipTableUpdate?: boolean) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -19,6 +19,8 @@ export const AdminNotificationProvider: React.FC<AdminNotificationProviderProps>
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const previousOrdersRef = useRef<string>("");
+  const isStatusUpdateRef = useRef<boolean>(false);
+  const lastFetchTimeRef = useRef<number>(0);
 
   const notifyOrderTableUpdate = () => {
     console.log('notifyOrderTableUpdate: Event dispatched');
@@ -37,12 +39,21 @@ export const AdminNotificationProvider: React.FC<AdminNotificationProviderProps>
     });
   };
 
-  const refreshNotifications = async () => {
+  const refreshNotifications = async (skipTableUpdate = false) => {
     if (!user || user.role !== 'admin') return;
+
+    // تجنب الطلبات المتكررة - انتظار 15 ثانية على الأقل بين الطلبات
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetchTimeRef.current;
+    if (timeSinceLastFetch < 15000 && !skipTableUpdate) { // 15 ثانية
+      console.log('Skipping refresh - too soon since last fetch');
+      return;
+    }
 
     try {
       setIsLoading(true);
-      const response = await apiService.getUserOrders(); // For admin, this returns all orders
+      lastFetchTimeRef.current = now;
+      const response = await apiService.getAllOrdersAdmin(); // استخدام دالة الأدمن المخصصة
       const orders = response.orders || [];
       const pendingCount = orders.filter(order => order.status === 'pending').length;
       const currentOrdersJSON = JSON.stringify(orders);
@@ -50,8 +61,15 @@ export const AdminNotificationProvider: React.FC<AdminNotificationProviderProps>
 
       // تحقق من وجود تغييرات في الطلبات
       if (currentOrdersJSON !== previousOrdersJSON) {
-        console.log('Orders have changed, updating table');
-        notifyOrderTableUpdate();
+        console.log('Orders have changed');
+        
+        // تحديث الجدول فقط إذا لم نطلب تخطيه
+        if (!skipTableUpdate) {
+          console.log('Updating table');
+          notifyOrderTableUpdate();
+        } else {
+          console.log('Skipping table update');
+        }
         
         // تحقق من وجود طلبات جديدة
         if (pendingCount > pendingOrdersCount) {
@@ -76,7 +94,7 @@ export const AdminNotificationProvider: React.FC<AdminNotificationProviderProps>
       // Initial fetch
       refreshNotifications();
       
-      // Set up interval for real-time updates (every 30 seconds)
+      // Set up interval for real-time updates (every 30 seconds for admin responsiveness)
       interval = setInterval(refreshNotifications, 30000);
     } else {
       // Reset count if not admin
@@ -104,7 +122,7 @@ export const AdminNotificationProvider: React.FC<AdminNotificationProviderProps>
   );
 };
 
-export const useAdminNotifications = (): AdminNotificationContextType => {
+export const useAdminNotifications = () => {
   const context = useContext(AdminNotificationContext);
   if (context === undefined) {
     throw new Error('useAdminNotifications must be used within an AdminNotificationProvider');
