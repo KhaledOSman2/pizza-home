@@ -3,6 +3,7 @@ const Order = require('../models/Order');
 const Dish = require('../models/Dish');
 const ApiError = require('../utils/ApiError');
 const catchAsync = require('../utils/catchAsync');
+const { createOrderTimestamp } = require('../utils/dateHelpers');
 
 const allowedStatuses = ['pending', 'preparing', 'on_the_way', 'delivered', 'cancelled'];
 
@@ -32,7 +33,7 @@ exports.create = catchAsync(async (req, res, next) => {
   const deliveryFee = 0;
   const total = subtotal + deliveryFee;
 
-  // Ensure we use server time for order creation
+  // Ensure we use timezone-aware server time for order creation
   const orderData = {
     user: req.user ? req.user._id : undefined,
     customer,
@@ -43,10 +44,17 @@ exports.create = catchAsync(async (req, res, next) => {
     status: 'pending',
   };
 
-  // Explicitly set timestamps to current server time
-  const now = new Date();
+  // Explicitly set timestamps to timezone-aware server time
+  const now = createOrderTimestamp();
   orderData.createdAt = now;
   orderData.updatedAt = now;
+
+  console.log('Creating order with timestamp:', {
+    timestamp: now.toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    timezone: process.env.TZ || 'UTC',
+    customer: customer.name
+  });
 
   const order = await Order.create(orderData);
 

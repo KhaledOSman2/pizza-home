@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { createOrderTimestamp, validateAndCorrectDate } = require('../utils/dateHelpers');
 
 const orderItemSchema = new mongoose.Schema(
   {
@@ -46,15 +47,21 @@ const orderSchema = new mongoose.Schema(
 
 // Generate unique numeric order number and initialize status history before saving
 orderSchema.pre('save', async function (next) {
-  const now = new Date();
+  const now = createOrderTimestamp();
   
   // Ensure createdAt is not in the future for new orders
   if (this.isNew) {
-    // Force createdAt to current server time if it's in the future
-    if (this.createdAt > now) {
-      console.warn(`Order created with future date: ${this.createdAt}, setting to current time: ${now}`);
-      this.createdAt = now;
-    }
+    // Use our timezone-aware timestamp function
+    this.createdAt = validateAndCorrectDate(this.createdAt || now);
+    this.updatedAt = now;
+    
+    console.log('Order timestamp validation:', {
+      orderId: this._id,
+      originalCreatedAt: this.createdAt,
+      correctedCreatedAt: this.createdAt,
+      serverTime: now,
+      environment: process.env.NODE_ENV || 'development'
+    });
   }
   
   if (!this.orderNumber) {
@@ -78,7 +85,7 @@ orderSchema.pre('save', async function (next) {
   if (this.isNew && this.statusHistory.length === 0) {
     this.statusHistory.push({
       status: this.status,
-      timestamp: now, // Use server time, not potentially incorrect client time
+      timestamp: now, // Use timezone-aware server time
       note: 'طلب جديد'
     });
   }
