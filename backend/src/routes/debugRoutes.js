@@ -115,4 +115,28 @@ router.post('/test-order', async (req, res) => {
   }
 });
 
+// Force deployment refresh endpoint
+router.post('/force-refresh', (req, res) => {
+  const timestamp = new Date();
+  const corrected = new Date(timestamp.getTime() - (60 * 60 * 1000));
+  
+  console.log('🚨 FORCE REFRESH TRIGGERED:', {
+    timestamp: timestamp.toISOString(),
+    corrected: corrected.toISOString(),
+    environment: process.env.NODE_ENV,
+    nodeVersion: process.version,
+    platform: process.platform
+  });
+  
+  res.json({
+    success: true,
+    message: 'Force refresh triggered - emergency timestamp fix active',
+    serverTime: timestamp.toISOString(),
+    correctedTime: corrected.toISOString(),
+    adjustment: '-1 hour EMERGENCY',
+    environment: process.env.NODE_ENV || 'development',
+    deploymentHash: Date.now().toString(36) // Force cache invalidation
+  });
+});
+
 module.exports = router;

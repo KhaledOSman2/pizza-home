@@ -55,20 +55,20 @@ const orderSchema = new mongoose.Schema(
 orderSchema.pre('save', async function (next) {
   const now = createTimestamp(); // Use our controlled timestamp
   
-  // Force correct timestamps for all orders
+  // FORCE correct timestamps for all orders - OVERRIDE EVERYTHING
   if (this.isNew) {
-    // Always use our controlled timestamp, never trust external sources
-    this.createdAt = now;
-    this.updatedAt = now;
+    // EMERGENCY FIX: Force -1 hour from server time
+    const emergencyFix = new Date(Date.now() - (60 * 60 * 1000));
+    this.createdAt = emergencyFix;
+    this.updatedAt = emergencyFix;
     
-    console.log('🕐 Order Creation Timestamp Control:', {
+    console.log('🚨 EMERGENCY TIMESTAMP FIX:', {
       orderId: this._id?.toString().slice(-6) || 'new',
-      createdAt: this.createdAt.toISOString(),
-      updatedAt: this.updatedAt.toISOString(),
-      environment: process.env.NODE_ENV || 'development',
-      serverTime: new Date().toISOString(),
-      cairoTime: now.toISOString(),
-      customer: this.customer?.name
+      emergencyFixedTime: this.createdAt.toISOString(),
+      originalServerTime: new Date().toISOString(),
+      adjustment: '-1 hour EMERGENCY',
+      customer: this.customer?.name,
+      environment: process.env.NODE_ENV || 'development'
     });
   } else {
     // For updates, only update the updatedAt field

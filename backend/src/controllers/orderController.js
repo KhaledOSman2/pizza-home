@@ -34,8 +34,9 @@ exports.create = catchAsync(async (req, res, next) => {
   const deliveryFee = 0;
   const total = subtotal + deliveryFee;
 
-  // Use absolute timestamp control - no external dependencies
-  const now = createTimestamp(); // Our controlled Cairo time
+  // FORCE correct timestamp - no dependencies on middleware
+  const serverTime = new Date();
+  const correctCairoTime = new Date(serverTime.getTime() - (60 * 60 * 1000)); // Force -1 hour
   
   const orderData = {
     user: req.user ? req.user._id : undefined,
@@ -45,14 +46,15 @@ exports.create = catchAsync(async (req, res, next) => {
     deliveryFee,
     total,
     status: 'pending',
-    // Force our controlled timestamps
-    createdAt: now,
-    updatedAt: now
+    // FORCE correct timestamps - override everything
+    createdAt: correctCairoTime,
+    updatedAt: correctCairoTime
   };
 
-  console.log('🚀 Creating order with CONTROLLED timestamp:', {
-    controlledTimestamp: now.toISOString(),
-    systemTime: new Date().toISOString(),
+  console.log('🚨 FORCING correct timestamp (override all):', {
+    serverTime: serverTime.toISOString(),
+    correctedCairoTime: correctCairoTime.toISOString(),
+    adjustment: '-1 hour FORCED',
     environment: process.env.NODE_ENV || 'development',
     timezone: process.env.TZ || 'UTC',
     customer: customer.name,
