@@ -74,7 +74,7 @@ const OrderTrackingDialog = ({ order, open, onOpenChange }: OrderTrackingDialogP
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleString('ar-EG', {
-      timeZone: 'Asia/Karachi', // UTC+5
+      timeZone: 'Asia/Kuwait', // UTC+3
       year: 'numeric',
       month: 'long',
       day: 'numeric',

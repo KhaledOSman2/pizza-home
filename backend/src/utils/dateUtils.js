@@ -3,7 +3,7 @@
  */
 
 // Set the default timezone - can be configured based on user location
-const DEFAULT_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Karachi'; // UTC+5 for Pakistan
+const DEFAULT_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Kuwait'; // UTC+3 for Kuwait/Middle East
 const CAIRO_TIMEZONE = 'Africa/Cairo';
 
 /**

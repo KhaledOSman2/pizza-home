@@ -65,7 +65,7 @@ const addDateHeaders = (req, res, next) => {
   // Add server time information to response headers
   res.set({
     'X-Server-Time': cairoTime.toISOString(),
-    'X-Server-Timezone': 'Asia/Karachi'
+    'X-Server-Timezone': 'Asia/Kuwait'
   });
   
   // Add current time to request for use in controllers
