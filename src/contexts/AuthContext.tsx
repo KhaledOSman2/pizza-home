@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { apiService, User } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
 import { queryKeys } from '@/lib/queryClient';
@@ -22,6 +23,7 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { data: userResponse, isLoading, error } = useCurrentUser();
   
   const user = userResponse?.user || null;
@@ -84,22 +86,42 @@ export function AuthProvider({ children }: AuthProviderProps) {
     try {
       await apiService.logout();
       
+      // مسح التوكن
+      apiService.clearAuthToken();
+      
+      // مسح query للمستخدم الحالي بشكل محدد
+      queryClient.setQueryData(queryKeys.currentUser, null);
+      
       // مسح جميع البيانات من الـ cache عند تسجيل الخروج
       queryClient.clear();
       
-      toast({
-        title: "تم تسجيل الخروج",
-        description: "نراك قريباً!",
-      });
-    } catch (error) {
-      // حتى لو فشل تسجيل الخروج على الخادم، امسح البيانات المحلية
-      apiService.clearAuthToken();
-      queryClient.clear();
+      // إجبار refetch للمستخدم الحالي
+      queryClient.invalidateQueries({ queryKey: queryKeys.currentUser });
       
       toast({
         title: "تم تسجيل الخروج",
         description: "نراك قريباً!",
       });
+      
+      // إعادة التوجه لصفحة تسجيل الدخول
+      setTimeout(() => navigate('/login', { replace: true }), 100);
+      
+    } catch (error) {
+      // حتى لو فشل تسجيل الخروج على الخادم، امسح البيانات المحلية
+      apiService.clearAuthToken();
+      
+      // مسح query للمستخدم الحالي
+      queryClient.setQueryData(queryKeys.currentUser, null);
+      queryClient.clear();
+      queryClient.invalidateQueries({ queryKey: queryKeys.currentUser });
+      
+      toast({
+        title: "تم تسجيل الخروج",
+        description: "نراك قريباً!",
+      });
+      
+      // إعادة التوجه لصفحة تسجيل الدخول
+      setTimeout(() => navigate('/login', { replace: true }), 100);
     }
   };
 

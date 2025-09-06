@@ -10,7 +10,8 @@ export const useCurrentUser = () => {
     queryFn: () => apiService.getCurrentUser(),
     staleTime: 30 * 60 * 1000, // 30 minutes for user data
     retry: false, // لا نعيد المحاولة للمصادقة
-    refetchOnMount: false, // منع إعادة التحميل عند mount
+    refetchOnMount: true, // تحديث عند mount للتحقق من حالة المصادقة
+    refetchOnWindowFocus: false, // منع التحديث عند focus النافذة
   });
 };
 

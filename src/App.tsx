@@ -24,13 +24,13 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <AdminNotificationProvider>
-        <CartProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
+        <AdminNotificationProvider>
+          <CartProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/categories" element={<AllCategories />} />
@@ -53,13 +53,13 @@ const App = () => (
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </BrowserRouter>
-            {/* React Query Devtools - فقط في بيئة التطوير */}
-            <ReactQueryDevtools initialIsOpen={false} />
-          </TooltipProvider>
-        </CartProvider>
-      </AdminNotificationProvider>
-    </AuthProvider>
+              {/* React Query Devtools - فقط في بيئة التطوير */}
+              <ReactQueryDevtools initialIsOpen={false} />
+            </TooltipProvider>
+          </CartProvider>
+        </AdminNotificationProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 

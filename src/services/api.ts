@@ -258,22 +258,22 @@ class ApiService {
   }
 
   // Orders methods
-  async getOrders(): Promise<{ results: number; orders: Order[] }> {
-    return this.makeRequest<{ results: number; orders: Order[] }>('/orders');
+  async getOrders(): Promise<ApiResponse> {
+    return this.makeRequest('/orders');
   }
 
-  async getUserOrders(userId?: string): Promise<{ results: number; orders: Order[]; userRole?: string }> {
+  async getUserOrders(userId?: string): Promise<ApiResponse> {
     const endpoint = userId ? `/users/${userId}/orders` : '/orders';
-    return this.makeRequest<{ results: number; orders: Order[]; userRole?: string }>(endpoint);
+    return this.makeRequest(endpoint);
   }
 
   // دالة جديدة للأدمن لعرض جميع الطلبات
-  async getAllOrdersAdmin(): Promise<{ results: number; orders: Order[]; userRole?: string }> {
-    return this.makeRequest<{ results: number; orders: Order[]; userRole?: string }>('/orders/admin/all');
+  async getAllOrdersAdmin(): Promise<ApiResponse> {
+    return this.makeRequest('/orders/admin/all');
   }
 
-  async getOrder(orderId: string): Promise<{ order: Order }> {
-    return this.makeRequest<{ order: Order }>(`/orders/${orderId}`);
+  async getOrder(orderId: string): Promise<ApiResponse> {
+    return this.makeRequest(`/orders/${orderId}`);
   }
 
   async createOrder(orderData: {
@@ -288,24 +288,24 @@ class ApiService {
     }[];
     notes?: string;
     paymentMethod?: 'cod' | 'card';
-  }): Promise<{ order: Order }> {
-    return this.makeRequest<{ order: Order }>('/orders', {
+  }): Promise<ApiResponse> {
+    return this.makeRequest('/orders', {
       method: 'POST',
       body: JSON.stringify(orderData),
     });
   }
 
   // Categories methods
-  async getCategories(): Promise<{ results: number; categories: Category[] }> {
-    return this.makeRequest<{ results: number; categories: Category[] }>('/categories');
+  async getCategories(): Promise<ApiResponse> {
+    return this.makeRequest('/categories');
   }
 
-  async getCategory(categoryId: string): Promise<{ category: Category }> {
-    return this.makeRequest<{ category: Category }>(`/categories/${categoryId}`);
+  async getCategory(categoryId: string): Promise<ApiResponse> {
+    return this.makeRequest(`/categories/${categoryId}`);
   }
 
   // Dishes methods
-  async getDishes(categorySlug?: string, searchQuery?: string): Promise<{ results: number; dishes: Dish[] }> {
+  async getDishes(categorySlug?: string, searchQuery?: string): Promise<ApiResponse> {
     const params = new URLSearchParams();
     if (categorySlug) params.append('category', categorySlug);
     if (searchQuery) params.append('q', searchQuery);
@@ -313,11 +313,11 @@ class ApiService {
     const queryString = params.toString();
     const endpoint = `/dishes${queryString ? `?${queryString}` : ''}`;
     
-    return this.makeRequest<{ results: number; dishes: Dish[] }>(endpoint);
+    return this.makeRequest(endpoint);
   }
 
   // Admin method to get all dishes including unavailable ones
-  async getAllDishes(categorySlug?: string, searchQuery?: string): Promise<{ results: number; dishes: Dish[] }> {
+  async getAllDishes(categorySlug?: string, searchQuery?: string): Promise<ApiResponse> {
     const params = new URLSearchParams();
     if (categorySlug) params.append('category', categorySlug);
     if (searchQuery) params.append('q', searchQuery);
@@ -326,24 +326,24 @@ class ApiService {
     const queryString = params.toString();
     const endpoint = `/dishes?${queryString}`;
     
-    return this.makeRequest<{ results: number; dishes: Dish[] }>(endpoint);
+    return this.makeRequest(endpoint);
   }
 
-  async getDish(dishId: string): Promise<{ dish: Dish }> {
-    return this.makeRequest<{ dish: Dish }>(`/dishes/${dishId}`);
+  async getDish(dishId: string): Promise<ApiResponse> {
+    return this.makeRequest(`/dishes/${dishId}`);
   }
 
   // Admin methods for categories
-  async createCategory(categoryData: FormData): Promise<{ category: Category }> {
-    return this.makeRequest<{ category: Category }>('/categories', {
+  async createCategory(categoryData: FormData): Promise<ApiResponse> {
+    return this.makeRequest('/categories', {
       method: 'POST',
       body: categoryData,
       headers: {}, // Remove Content-Type to let browser set it for FormData
     });
   }
 
-  async updateCategory(categoryId: string, categoryData: FormData): Promise<{ category: Category }> {
-    return this.makeRequest<{ category: Category }>(`/categories/${categoryId}`, {
+  async updateCategory(categoryId: string, categoryData: FormData): Promise<ApiResponse> {
+    return this.makeRequest(`/categories/${categoryId}`, {
       method: 'PATCH',
       body: categoryData,
       headers: {}, // Remove Content-Type to let browser set it for FormData
@@ -357,16 +357,16 @@ class ApiService {
   }
 
   // Admin methods for dishes
-  async createDish(dishData: FormData): Promise<{ dish: Dish }> {
-    return this.makeRequest<{ dish: Dish }>('/dishes', {
+  async createDish(dishData: FormData): Promise<ApiResponse> {
+    return this.makeRequest('/dishes', {
       method: 'POST',
       body: dishData,
       headers: {}, // Remove Content-Type to let browser set it for FormData
     });
   }
 
-  async updateDish(dishId: string, dishData: FormData): Promise<{ dish: Dish }> {
-    return this.makeRequest<{ dish: Dish }>(`/dishes/${dishId}`, {
+  async updateDish(dishId: string, dishData: FormData): Promise<ApiResponse> {
+    return this.makeRequest(`/dishes/${dishId}`, {
       method: 'PATCH',
       body: dishData,
       headers: {}, // Remove Content-Type to let browser set it for FormData
@@ -380,25 +380,24 @@ class ApiService {
   }
 
   // Admin methods for orders
-  async updateOrderStatus(orderId: string, status: Order['status']): Promise<{ order: Order }> {
-    return this.makeRequest<{ order: Order }>(`/orders/${orderId}/status`, {
+  async updateOrderStatus(orderId: string, status: Order['status']): Promise<ApiResponse> {
+    return this.makeRequest(`/orders/${orderId}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     });
   }
 
   // Admin methods for users (if needed)
-  async getAllUsers(): Promise<{ results: number; users: User[] }> {
-    return this.makeRequest<{ results: number; users: User[] }>('/users');
+  async getAllUsers(): Promise<ApiResponse> {
+    return this.makeRequest('/users');
   }
 
-  async getUser(userId: string): Promise<{ user: User }> {
-    return this.makeRequest<{ user: User }>(`/users/${userId}`);
+  async getUser(userId: string): Promise<ApiResponse> {
+    return this.makeRequest(`/users/${userId}`);
   }
 
-
-  async updateUser(userId: string, userData: Partial<User>): Promise<{ user: User }> {
-    return this.makeRequest<{ user: User }>(`/users/${userId}`, {
+  async updateUser(userId: string, userData: Partial<User>): Promise<ApiResponse> {
+    return this.makeRequest(`/users/${userId}`, {
       method: 'PATCH',
       body: JSON.stringify(userData),
     });
