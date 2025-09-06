@@ -16,6 +16,15 @@ interface ApiResponse<T = any> {
   token?: string;
   message?: string;
   error?: string;
+  results?: number;
+  orders?: Order[];
+  userRole?: string;
+  order?: Order;
+  categories?: Category[];
+  category?: Category;
+  dishes?: Dish[];
+  dish?: Dish;
+  users?: User[];
 }
 
 interface LoginData {
@@ -129,6 +138,27 @@ interface Order {
 }
 
 class ApiService {
+  private authToken: string | null = null;
+
+  // Store token for Authorization header fallback
+  setAuthToken(token: string) {
+    this.authToken = token;
+    // Also store in localStorage for persistence
+    localStorage.setItem('authToken', token);
+  }
+
+  // Clear token
+  clearAuthToken() {
+    this.authToken = null;
+    localStorage.removeItem('authToken');
+  }
+
+  // Get token from memory or localStorage
+  private getAuthToken(): string | null {
+    if (this.authToken) return this.authToken;
+    return localStorage.getItem('authToken');
+  }
+
   private async makeRequest<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -140,17 +170,24 @@ class ApiService {
       ...options,
     };
 
+    // Prepare headers
+    const headers: Record<string, string> = {};
+    
+    // Add Authorization header if we have a token
+    const token = this.getAuthToken();
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     // Only set Content-Type for non-FormData requests
     if (!(options.body instanceof FormData)) {
-      config.headers = {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      };
-    } else {
-      config.headers = {
-        ...options.headers,
-      };
+      headers['Content-Type'] = 'application/json';
     }
+
+    config.headers = {
+      ...headers,
+      ...options.headers,
+    };
 
     try {
       console.log('Making API request to:', url, 'with config:', config);
@@ -172,24 +209,44 @@ class ApiService {
 
   // Authentication methods
   async login(credentials: LoginData): Promise<ApiResponse<User>> {
-    return this.makeRequest<User>('/auth/login', {
+    const response = await this.makeRequest<User>('/auth/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
+    
+    // Store token for future requests
+    if (response.token) {
+      this.setAuthToken(response.token);
+    }
+    
+    return response;
   }
 
   async signup(userData: SignUpData): Promise<ApiResponse<User>> {
-    return this.makeRequest<User>('/auth/signup', {
+    const response = await this.makeRequest<User>('/auth/signup', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
+    
+    // Store token for future requests
+    if (response.token) {
+      this.setAuthToken(response.token);
+    }
+    
+    return response;
   }
 
   async logout(): Promise<ApiResponse> {
-    return this.makeRequest('/auth/logout', {
+    const response = await this.makeRequest('/auth/logout', {
       method: 'POST',
     });
+    
+    // Clear stored token
+    this.clearAuthToken();
+    
+    return response;
   }
+
 
   async getCurrentUser(): Promise<ApiResponse<User>> {
     return this.makeRequest<User>('/auth/me');

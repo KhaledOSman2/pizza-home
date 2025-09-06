@@ -9,13 +9,22 @@ function signAccessToken(userId) {
 
 function setAuthCookie(res, token) {
   const isProd = process.env.NODE_ENV === 'production';
-  res.cookie('access_token', token, {
+  
+  // In production, use more permissive cookie settings for cross-domain
+  const cookieOptions = {
     httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
+    secure: isProd, // HTTPS only in production
+    sameSite: isProd ? 'none' : 'lax', // Allow cross-site cookies in production
     signed: true,
     maxAge: 24 * 60 * 60 * 1000, // 1 day
-  });
+  };
+  
+  // Add domain setting for production if needed
+  if (isProd && process.env.COOKIE_DOMAIN) {
+    cookieOptions.domain = process.env.COOKIE_DOMAIN;
+  }
+  
+  res.cookie('access_token', token, cookieOptions);
 }
 
 module.exports = { signAccessToken, setAuthCookie };
