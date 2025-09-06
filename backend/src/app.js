@@ -11,6 +11,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 
 const ApiError = require('./utils/ApiError');
 const { errorHandler } = require('./middleware/errorHandler');
+const { addDateHeaders } = require('./middleware/dateValidation');
 
 // Route modules (will be created next)
 const authRoutes = require('./routes/authRoutes');
@@ -18,7 +19,6 @@ const userRoutes = require('./routes/userRoutes');
 const categoryRoutes = require('./routes/categoryRoutes');
 const dishRoutes = require('./routes/dishRoutes');
 const orderRoutes = require('./routes/orderRoutes');
-const debugRoutes = require('./routes/debugRoutes');
 
 const app = express();
 
@@ -73,6 +73,9 @@ app.use(hpp());
 // Compression
 app.use(compression());
 
+// Date validation and timezone headers
+app.use(addDateHeaders);
+
 // Rate limiting for API
 const limiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000),
@@ -114,8 +117,12 @@ app.use('/api', limiter);
 // });
 
 // Health check
-app.get('/api/health', (_req, res) => {
-  res.status(200).json({ status: 'ok', time: new Date().toISOString() });
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    time: req.serverTime.toISOString(),
+    timezone: 'Africa/Cairo'
+  });
 });
 
 // Routes
@@ -124,7 +131,6 @@ app.use('/api/users', userRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/dishes', dishRoutes);
 app.use('/api/orders', orderRoutes);
-app.use('/api/debug', debugRoutes);
 
 // 404 handler
 app.all('*', (req, res, next) => {

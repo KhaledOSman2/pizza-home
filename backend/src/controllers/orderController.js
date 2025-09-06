@@ -3,8 +3,7 @@ const Order = require('../models/Order');
 const Dish = require('../models/Dish');
 const ApiError = require('../utils/ApiError');
 const catchAsync = require('../utils/catchAsync');
-const { createOrderTimestamp } = require('../utils/dateHelpers');
-const { createTimestamp } = require('../middleware/timestampOverride');
+const { createValidDate } = require('../utils/dateUtils');
 
 const allowedStatuses = ['pending', 'preparing', 'on_the_way', 'delivered', 'cancelled'];
 
@@ -34,11 +33,7 @@ exports.create = catchAsync(async (req, res, next) => {
   const deliveryFee = 0;
   const total = subtotal + deliveryFee;
 
-  // FORCE correct timestamp - no dependencies on middleware
-  const serverTime = new Date();
-  const correctCairoTime = new Date(serverTime.getTime() - (60 * 60 * 1000)); // Force -1 hour
-  
-  const orderData = {
+  const order = await Order.create({
     user: req.user ? req.user._id : undefined,
     customer,
     items: normalizedItems,
@@ -46,23 +41,7 @@ exports.create = catchAsync(async (req, res, next) => {
     deliveryFee,
     total,
     status: 'pending',
-    // FORCE correct timestamps - override everything
-    createdAt: correctCairoTime,
-    updatedAt: correctCairoTime
-  };
-
-  console.log('🚨 FORCING correct timestamp (override all):', {
-    serverTime: serverTime.toISOString(),
-    correctedCairoTime: correctCairoTime.toISOString(),
-    adjustment: '-1 hour FORCED',
-    environment: process.env.NODE_ENV || 'development',
-    timezone: process.env.TZ || 'UTC',
-    customer: customer.name,
-    userAgent: req.headers['user-agent']?.substring(0, 50),
-    clientIP: req.ip || req.connection.remoteAddress
   });
-
-  const order = await Order.create(orderData);
 
   res.status(201).json({ order });
 });
@@ -140,7 +119,7 @@ exports.updateStatus = catchAsync(async (req, res, next) => {
     // Add status change to history
     order.statusHistory.push({
       status,
-      timestamp: new Date(),
+      timestamp: createValidDate(),
       updatedBy: req.user._id,
       note: note || getStatusChangeNote(status)
     });

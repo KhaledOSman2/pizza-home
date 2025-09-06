@@ -1,6 +1,5 @@
 const mongoose = require('mongoose');
-const { createOrderTimestamp, validateAndCorrectDate } = require('../utils/dateHelpers');
-const { createTimestamp, validateTimestamp } = require('../middleware/timestampOverride');
+const { createValidDate } = require('../utils/dateUtils');
 
 const orderItemSchema = new mongoose.Schema(
   {
@@ -36,47 +35,18 @@ const orderSchema = new mongoose.Schema(
         enum: ['pending', 'preparing', 'on_the_way', 'delivered', 'cancelled'],
         required: true
       },
-      timestamp: { type: Date, default: createTimestamp },
+      timestamp: { type: Date, default: () => createValidDate() },
       updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       note: String
     }],
     notes: String,
     paymentMethod: { type: String, enum: ['cod', 'card'], default: 'cod' },
-    // Override default timestamps with our controlled timing
-    createdAt: { type: Date, default: createTimestamp },
-    updatedAt: { type: Date, default: createTimestamp }
   },
-  { 
-    timestamps: false // Disable automatic timestamps to use our custom ones
-  }
+  { timestamps: true }
 );
 
 // Generate unique numeric order number and initialize status history before saving
 orderSchema.pre('save', async function (next) {
-  const now = createTimestamp(); // Use our controlled timestamp
-  
-  // FORCE correct timestamps for all orders - OVERRIDE EVERYTHING
-  if (this.isNew) {
-    // EMERGENCY FIX: Force -1 hour from server time
-    const emergencyFix = new Date(Date.now() - (60 * 60 * 1000));
-    this.createdAt = emergencyFix;
-    this.updatedAt = emergencyFix;
-    
-    console.log('🚨 EMERGENCY TIMESTAMP FIX:', {
-      orderId: this._id?.toString().slice(-6) || 'new',
-      emergencyFixedTime: this.createdAt.toISOString(),
-      originalServerTime: new Date().toISOString(),
-      adjustment: '-1 hour EMERGENCY',
-      customer: this.customer?.name,
-      environment: process.env.NODE_ENV || 'development'
-    });
-  } else {
-    // For updates, only update the updatedAt field
-    this.updatedAt = now;
-    // Validate existing createdAt
-    this.createdAt = validateTimestamp(this.createdAt);
-  }
-  
   if (!this.orderNumber) {
     // Generate a 6-digit order number
     let orderNumber;
@@ -98,7 +68,7 @@ orderSchema.pre('save', async function (next) {
   if (this.isNew && this.statusHistory.length === 0) {
     this.statusHistory.push({
       status: this.status,
-      timestamp: now, // Use our controlled timestamp
+      timestamp: createValidDate(),
       note: 'طلب جديد'
     });
   }

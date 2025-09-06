@@ -2,9 +2,6 @@
 const dotenv = require('dotenv');
 dotenv.config({ path: require('path').join(__dirname, '..', '.env') });
 
-// Set timezone to Cairo/Egypt for consistent timestamp handling
-process.env.TZ = process.env.TZ || 'Africa/Cairo';
-
 const http = require('http');
 const app = require('./app');
 const connectDB = require('./config/db');

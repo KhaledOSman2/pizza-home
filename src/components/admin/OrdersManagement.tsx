@@ -25,6 +25,14 @@ import { apiService, Order } from "@/services/api";
 import { toast } from "@/hooks/use-toast";
 import { useAdminOrders, useUpdateOrderStatus } from "@/hooks/useQueries";
 import OrderTrackingDialog from "./OrderTrackingDialog";
+import { 
+  formatArabicDate, 
+  formatCompactArabicDate, 
+  getRelativeTimeArabic,
+  sortOrdersByDate,
+  isSuspiciousFutureDate,
+  getDateWarningMessage
+} from "@/utils/dateUtils";
 
 interface OrdersManagementProps {
   onOrderStatusChange?: () => void;
@@ -63,48 +71,10 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
     }
   }, [error]);
 
-  // Helper function to detect suspicious future dates
-  const isSuspiciousDate = (dateString: string) => {
-    const orderDate = new Date(dateString);
-    const now = new Date();
-    const diffInMinutes = (orderDate.getTime() - now.getTime()) / (1000 * 60);
-    // Consider dates more than 5 minutes in the future as suspicious
-    return diffInMinutes > 5;
-  };
-
-  // Enhanced sorting function that handles suspicious dates
-  const sortOrdersChronologically = (ordersArray: Order[]) => {
-    return [...ordersArray].sort((a, b) => {
-      const dateA = new Date(a.createdAt);
-      const dateB = new Date(b.createdAt);
-      const now = new Date();
-      
-      // Check for suspicious future dates
-      const aIsSuspicious = isSuspiciousDate(a.createdAt);
-      const bIsSuspicious = isSuspiciousDate(b.createdAt);
-      
-      // If both are suspicious or both are normal, sort normally
-      if (aIsSuspicious === bIsSuspicious) {
-        return dateB.getTime() - dateA.getTime(); // Newest first
-      }
-      
-      // If only A is suspicious, B should come first
-      if (aIsSuspicious && !bIsSuspicious) {
-        return 1;
-      }
-      
-      // If only B is suspicious, A should come first
-      if (!aIsSuspicious && bIsSuspicious) {
-        return -1;
-      }
-      
-      return dateB.getTime() - dateA.getTime();
-    });
-  };
-
-  // Filter orders based on status and search
+  // Filter and sort orders based on status and search
   useEffect(() => {
-    let filtered = orders;
+    // First sort orders properly (handling suspicious dates)
+    let filtered = sortOrdersByDate(orders);
     
     // Filter by search term
     if (searchTerm) {
@@ -141,10 +111,7 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
       filtered = filtered.filter(order => order.status === statusFilter);
     }
     
-    // Apply enhanced chronological sorting
-    const sortedFiltered = sortOrdersChronologically(filtered);
-    
-    setFilteredOrders(sortedFiltered);
+    setFilteredOrders(filtered);
   }, [orders, statusFilter, searchTerm]);
 
   const getStatusColor = (status: Order["status"]) => {
@@ -324,28 +291,17 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
                       {getStatusText(order.status)}
                     </Badge>
                     {isNewOrder(order) && (
-                      <Badge className="bg-green-500 hover:bg-green-600 text-white ml-2 animate-pulse shadow-md font-bold">
+                  <Badge className="bg-green-500 hover:bg-green-600 text-white ml-2 animate-pulse shadow-md font-bold">
                         جديد
-                      </Badge>
-                    )}
-                    {isSuspiciousDate(order.createdAt) && (
-                      <Badge className="bg-orange-500 hover:bg-orange-600 text-white ml-2 shadow-md font-bold" title="تاريخ مشبوه - يبدو أنه في المستقبل">
-                        ⚠️ تاريخ مشبوه
                       </Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`text-sm ${isSuspiciousDate(order.createdAt) ? 'text-orange-600 font-medium' : 'text-muted-foreground'}`}>
-                      {new Date(order.createdAt).toLocaleDateString('ar-EG', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                      {isSuspiciousDate(order.createdAt) && (
-                        <span className="text-xs text-orange-500 mr-1" title="هذا التاريخ يبدو أنه في المستقبل">
-                          (مشبوه)
+                    <span className="text-muted-foreground text-sm flex items-center gap-1">
+                      {formatCompactArabicDate(order.createdAt)}
+                      {isSuspiciousFutureDate(order.createdAt) && (
+                        <span className="text-yellow-600" title={getDateWarningMessage(order.createdAt) || ""}>
+                          ⚠️
                         </span>
                       )}
                     </span>
@@ -452,13 +408,17 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
                 </Badge>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Clock className="h-4 w-4" />
-                  {new Date(selectedOrder.createdAt).toLocaleDateString('ar-EG', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
+                  <div className="flex items-center gap-2">
+                    {formatArabicDate(selectedOrder.createdAt)}
+                    {isSuspiciousFutureDate(selectedOrder.createdAt) && (
+                      <div className="flex items-center gap-1 text-yellow-600">
+                        ⚠️
+                        <span className="text-xs">
+                          {getDateWarningMessage(selectedOrder.createdAt)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
