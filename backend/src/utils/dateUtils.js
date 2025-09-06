@@ -2,7 +2,8 @@
  * Date utility functions for consistent date handling across the application
  */
 
-// Set the default timezone to Cairo (Egypt) to ensure consistent date handling
+// Set the default timezone - can be configured based on user location
+const DEFAULT_TIMEZONE = process.env.APP_TIMEZONE || 'Asia/Karachi'; // UTC+5 for Pakistan
 const CAIRO_TIMEZONE = 'Africa/Cairo';
 
 /**
@@ -42,13 +43,14 @@ const createValidDate = (date = null) => {
 /**
  * Format date for Arabic locale
  * @param {Date|string} date - Date to format
+ * @param {string} timezone - Optional timezone override
  * @returns {string} Formatted date string
  */
-const formatArabicDate = (date) => {
+const formatArabicDate = (date, timezone = DEFAULT_TIMEZONE) => {
   const dateObj = new Date(date);
   
   return dateObj.toLocaleString('ar-EG', {
-    timeZone: CAIRO_TIMEZONE,
+    timeZone: timezone,
     year: 'numeric',
     month: 'long',
     day: 'numeric',

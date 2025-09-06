@@ -2,7 +2,8 @@
  * Date utility functions for consistent date handling in the frontend
  */
 
-// Cairo timezone
+// Default timezone - can be configured based on location
+const DEFAULT_TIMEZONE = 'Asia/Karachi'; // UTC+5 for Pakistan/Middle East
 const CAIRO_TIMEZONE = 'Africa/Cairo';
 
 /**
@@ -10,11 +11,11 @@ const CAIRO_TIMEZONE = 'Africa/Cairo';
  * @param date - Date to format
  * @returns Formatted date string in Arabic
  */
-export const formatArabicDate = (date: Date | string): string => {
+export const formatArabicDate = (date: Date | string, timezone: string = DEFAULT_TIMEZONE): string => {
   const dateObj = new Date(date);
   
   return dateObj.toLocaleString('ar-EG', {
-    timeZone: CAIRO_TIMEZONE,
+    timeZone: timezone,
     year: 'numeric',
     month: 'long',
     day: 'numeric',
@@ -29,11 +30,11 @@ export const formatArabicDate = (date: Date | string): string => {
  * @param date - Date to format
  * @returns Compact formatted date string in Arabic
  */
-export const formatCompactArabicDate = (date: Date | string): string => {
+export const formatCompactArabicDate = (date: Date | string, timezone: string = DEFAULT_TIMEZONE): string => {
   const dateObj = new Date(date);
   
   return dateObj.toLocaleString('ar-EG', {
-    timeZone: CAIRO_TIMEZONE,
+    timeZone: timezone,
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
@@ -50,6 +51,8 @@ export const formatCompactArabicDate = (date: Date | string): string => {
 export const getRelativeTimeArabic = (date: Date | string): string => {
   const now = new Date();
   const dateObj = new Date(date);
+  
+  // Use UTC timestamps for accurate comparison
   const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000);
   
   if (diffInSeconds < 0) {
@@ -87,10 +90,11 @@ export const isSuspiciousFutureDate = (date: Date | string): boolean => {
   const now = new Date();
   const dateObj = new Date(date);
   
-  // Allow up to 1 hour difference to handle timezone issues between environments
-  const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+  // Simple UTC comparison - both dates are in UTC
+  // Allow up to 3 hours difference to handle various timezone issues
+  const threeHoursFromNow = new Date(now.getTime() + 3 * 60 * 60 * 1000);
   
-  return dateObj > oneHourFromNow;
+  return dateObj > threeHoursFromNow;
 };
 
 /**

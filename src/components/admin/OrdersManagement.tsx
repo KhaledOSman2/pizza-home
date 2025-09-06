@@ -33,6 +33,7 @@ import {
   isSuspiciousFutureDate,
   getDateWarningMessage
 } from "@/utils/dateUtils";
+import { syncWithServerTime } from "@/utils/serverTimeSync";
 
 interface OrdersManagementProps {
   onOrderStatusChange?: () => void;
@@ -51,6 +52,11 @@ const OrdersManagement = ({ onOrderStatusChange }: OrdersManagementProps = {}) =
   const [trackingOpen, setTrackingOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Sync with server time on component mount
+  useEffect(() => {
+    syncWithServerTime();
+  }, []);
 
   // Check if order is new (within last 24 hours) and has pending status
   const isNewOrder = (order: Order) => {

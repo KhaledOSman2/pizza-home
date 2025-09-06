@@ -121,7 +121,7 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok', 
     time: req.serverTime.toISOString(),
-    timezone: 'Africa/Cairo'
+    timezone: 'Asia/Karachi'
   });
 });
 
