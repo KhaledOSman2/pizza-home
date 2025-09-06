@@ -6,11 +6,13 @@
 const CAIRO_TIMEZONE = 'Africa/Cairo';
 
 /**
- * Get current date/time in Cairo timezone
- * @returns {Date} Current date in Cairo timezone
+ * Get current date/time - simplified to use system time
+ * @returns {Date} Current system date/time
  */
 const getCairoTime = () => {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: CAIRO_TIMEZONE }));
+  // Simplified: just return current system time
+  // The timezone conversion will be handled in formatting functions
+  return new Date();
 };
 
 /**
@@ -19,7 +21,7 @@ const getCairoTime = () => {
  * @returns {Date} Validated date (current time if future date provided)
  */
 const createValidDate = (date = null) => {
-  const now = getCairoTime();
+  const now = new Date();
   
   if (!date) {
     return now;
@@ -27,9 +29,10 @@ const createValidDate = (date = null) => {
   
   const inputDate = new Date(date);
   
-  // If the provided date is in the future, use current time instead
-  if (inputDate > now) {
-    console.warn(`⚠️ Future date detected (${inputDate.toISOString()}), using current time instead`);
+  // Allow for reasonable time differences (1 hour) to handle timezone issues
+  const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+  if (inputDate > oneHourFromNow) {
+    console.warn(`⚠️ Future date detected (${inputDate.toISOString()}), using current time instead (current: ${now.toISOString()})`);
     return now;
   }
   
@@ -72,16 +75,17 @@ const formatApiDate = (date) => {
 const isValidOrderDate = (date) => {
   try {
     const dateObj = new Date(date);
-    const now = getCairoTime();
+    const now = new Date(); // Use system time instead of converted time
     
     // Check if date is valid
     if (isNaN(dateObj.getTime())) {
       return false;
     }
     
-    // Check if date is not more than 5 minutes in the future (allowing for small clock differences)
-    const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
-    if (dateObj > fiveMinutesFromNow) {
+    // Allow for up to 30 minutes difference to handle timezone issues between environments
+    const allowedBuffer = new Date(now.getTime() + 30 * 60 * 1000);
+    if (dateObj > allowedBuffer) {
+      console.warn(`⚠️ Date ${dateObj.toISOString()} is more than 30 minutes in the future (current: ${now.toISOString()})`);
       return false;
     }
     
@@ -97,7 +101,7 @@ const isValidOrderDate = (date) => {
  * @returns {string} Relative time in Arabic
  */
 const getRelativeTimeArabic = (date) => {
-  const now = getCairoTime();
+  const now = new Date();
   const dateObj = new Date(date);
   const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000);
   

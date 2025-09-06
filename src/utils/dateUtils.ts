@@ -79,7 +79,7 @@ export const getRelativeTimeArabic = (date: Date | string): string => {
 };
 
 /**
- * Check if a date might be in the future (allowing for small time differences)
+ * Check if a date might be in the future (allowing for reasonable time differences)
  * @param date - Date to check
  * @returns True if the date appears to be in the future
  */
@@ -87,10 +87,10 @@ export const isSuspiciousFutureDate = (date: Date | string): boolean => {
   const now = new Date();
   const dateObj = new Date(date);
   
-  // Allow up to 5 minutes difference to account for server/client time differences
-  const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+  // Allow up to 1 hour difference to handle timezone issues between environments
+  const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
   
-  return dateObj > fiveMinutesFromNow;
+  return dateObj > oneHourFromNow;
 };
 
 /**

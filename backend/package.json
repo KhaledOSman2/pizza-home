@@ -11,7 +11,8 @@
     "seed:sample": "node src/scripts/seedSampleData.js",
     "seed:orders": "node src/scripts/createOrdersForUser.js",
     "fix-dates": "node src/scripts/fixOrderDates.js",
-    "fix-dates:run": "node src/scripts/fixOrderDates.js fix"
+    "fix-dates:run": "node src/scripts/fixOrderDates.js fix",
+    "debug-timezone": "node src/scripts/debugTimezone.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
